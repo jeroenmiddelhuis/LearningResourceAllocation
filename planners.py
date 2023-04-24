@@ -6,7 +6,25 @@ from typing import List
 import pandas as pd
 
 
-class Bayes_planner:
+class Planner(ABC):
+    """Abstract class that all planners must implement."""
+
+    @abstractmethod
+    def plan(self):
+        """
+        Assign tasks to resources from the simulation environment.
+
+        :param environment: a :class:`.Simulator`
+        :return: [(task, resource, moment)], where
+            task is an instance of :class:`.Task`,
+            resource is one of :attr:`.Problem.resources`, and
+            moment is a number representing the moment in simulation time
+            at which the resource must be assigned to the task (typically, this can also be :attr:`.Simulator.now`).
+        """
+        raise NotImplementedError
+
+
+class Bayes_planner(Planner):
 
     def __str__(self) -> str:
         return 'Bayesian'
@@ -174,29 +192,6 @@ class Bayes_planner:
 
 
         return assignments
-
-
-
-
-class Planner(ABC):
-    """Abstract class that all planners must implement."""
-
-    @abstractmethod
-    def plan(self):
-        """
-        Assign tasks to resources from the simulation environment.
-
-        :param environment: a :class:`.Simulator`
-        :return: [(task, resource, moment)], where
-            task is an instance of :class:`.Task`,
-            resource is one of :attr:`.Problem.resources`, and
-            moment is a number representing the moment in simulation time
-            at which the resource must be assigned to the task (typically, this can also be :attr:`.Simulator.now`).
-        """
-        raise NotImplementedError
-
-
-
 
 
 
