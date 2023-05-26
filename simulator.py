@@ -177,11 +177,11 @@ class Simulator:
 
     def sample_processing_time(self, resource, task):
         # Gamma
-        (mu, sigma) = self.resource_pools[task][resource]
-        sigma = self.cv * mu
-        alpha = mu**2/sigma**2
-        beta = mu/sigma**2
-        return random.gammavariate(alpha, 1/beta)
+        # (mu, sigma) = self.resource_pools[task][resource]
+        # sigma = self.cv * mu
+        # alpha = mu**2/sigma**2
+        # beta = mu/sigma**2
+        # return random.gammavariate(alpha, 1/beta)
 
         # Exponential
         return random.expovariate(1/self.resource_pools[task][resource][0])
