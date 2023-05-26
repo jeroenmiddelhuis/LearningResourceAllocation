@@ -92,7 +92,67 @@ def custom_schedule(initial_value: float) -> Callable[[float], float]:
     return func
 
 
-def linear_schedule(initial_value: float) -> Callable[[float], float]:
-    def func(progress_remaining: float) -> float:
-        return progress_remaining * initial_value
-    return func
+    def reset(self):
+        """Resets the environment to an initial state and returns an initial
+        observation.
+
+        Note that this function should not reset the environment's random
+        number generator(s); random variables in the environment's state should
+        be sampled independently between multiple calls to `reset()`. In other
+        words, each call of `reset()` should yield an environment suitable for
+        a new episode, independent of previous episodes.
+
+        Returns:
+            observation (object): the initial observation.
+        """
+
+        print("-------Resetting environment-------")
+
+        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to, cv=self.cv)
+        while (sum(self.define_action_masks()) <= 1):
+            self.simulator.run() # Run the simulator to get to the first decision
+
+        #self.finished = False
+        return self.simulator.get_state()
+
+
+    def render(self, mode='human', close=False):
+        print(f"Average reward: {self.average_cycle_time}")
+
+    # define mask based on current environment state (only the 3 vectors that are also known at inference time!)
+    def define_action_masks(self) -> List[bool]:
+        state = self.simulator.get_state()
+        mask = [0 for _ in range(len(self.simulator.output))]
+
+        for task_type in self.simulator.task_types:
+            if state[self.simulator.input.index(task_type)] > 0:
+                for resource in self.simulator.resource_pools[task_type]:
+                    if state[self.simulator.input.index(resource + '_availability')] > 0:
+                        mask[self.simulator.output.index((resource, task_type))] = 1
+
+        mask[-1] = 1 # Set postpone action to 1
+
+        return list(map(bool, mask))
+
+    def action_masks(self) -> List[bool]:
+        return self.define_action_masks()
+
+    """
+    TRAINING
+    Needed:
+        >Functions:
+            -Simulator step function: continues until plan is called
+            -Check output function
+            -Get state function
+            -Action function
+                *If multiple actions necessary -> better to invoke step function multiple times
+                and pass the assignments to the simulator once
+            -Reward function
+        >Adjustments:
+            -Sample interarrivals during training (no fixed file)
+
+    Optional:
+        -Use Env.close() -> disposes all garbage
+
+    INFERENCE
+    """
