@@ -32,11 +32,11 @@ class BPOEnv(Env):
 
         # Availability, busy times, assigned to, task numbers proportion, total
         highs = np.array([1 for x in range(len(self.simulator.resources))] +\
-                         [np.finfo(np.float64).max for x in range(len(self.simulator.resources))] +\
                          [float(len(self.simulator.task_types)) for x in range(len(self.simulator.resources))] +\
                          [1 for x in range(len(self.simulator.task_types))] +\
                          [np.finfo(np.float64).max])                         
         
+        #                          [np.finfo(np.float64).max for x in range(len(self.simulator.resources))] +\
         # highs = np.array([1 for x in range(len(self.simulator.resources))] +\
         #                  [np.finfo(np.float64).max for x in range(len(self.simulator.resources))] +\
         #                  [float(len(self.simulator.task_types)) for x in range(len(self.simulator.resources))] +\

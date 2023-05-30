@@ -104,11 +104,10 @@ class Simulator:
 
         # Reinforcement learning
         self.input = [resource + '_availability' for resource in self.resources] + \
-                     [resource + '_busy_time' for resource in self.resources] + \
                      [resource + '_to_task' for resource in self.resources] + \
                      self.task_types +\
                      ['Total tasks'] # Should be lists of strings
-        
+        #                      [resource + '_busy_time' for resource in self.resources] + \
         self.output = [(resource, task) for task in self.task_types for resource in self.resources if resource in self.resource_pools[task]] + ['Postpone']
 
         self.reward_function = reward_function
@@ -200,12 +199,12 @@ class Simulator:
     def get_state(self):
         ### Resource binary, busy time, assigned to + nr of each task
         resources_available = [1 if x in self.available_resources else 0 for x in self.resources]
-        resources_busy_time = [0 for _ in range(len(self.resources))]
+        #resources_busy_time = [0 for _ in range(len(self.resources))]
         resources_assigned = [0 for _ in range(len(self.resources))]
         for event in self.events:
             if event.event_type == EventType.TASK_COMPLETE:
                 resource_index = self.resources.index(event.resource)
-                resources_busy_time[resource_index] = self.now - event.task.start_time
+                #resources_busy_time[resource_index] = self.now - event.task.start_time
                 resources_assigned[resource_index] = self.task_types.index(event.task.task_type) + 1
         
         # Old:
@@ -220,8 +219,8 @@ class Simulator:
             task_types_num = [sum([1 if task.task_type == el else 0 for task in self.available_tasks])/len(self.available_tasks) for el in self.task_types]
         else:
             task_types_num = [0 for el in self.task_types]
-        
-        return resources_available + resources_busy_time + resources_assigned + task_types_num + [len(self.available_tasks)]
+        # + resources_busy_time +
+        return resources_available + resources_assigned + task_types_num + [len(self.available_tasks)]
 
         ### Resource binary + proportion tasks + total task
         # av_resources_ones = [1 if x in self.available_resources else 0 for x in self.resources]
@@ -346,11 +345,13 @@ class Simulator:
             for event in self.events:
                 if event.event_type == EventType.TASK_COMPLETE:
                     self.resource_total_busy_time[event.resource] += self.running_time - self.resource_last_start[event.resource]
-            for case in self.uncompleted_cases.values():
-                cycle_time = self.running_time - case.arrival_time
-                self.sumx += cycle_time
-                self.sumxx += cycle_time * cycle_time
-                self.sumw += 1
+                    
+            # Uncomment to include the cycle time of uncompleted cases
+            # for case in self.uncompleted_cases.values():
+            #     cycle_time = self.running_time - case.arrival_time
+            #     self.sumx += cycle_time
+            #     self.sumxx += cycle_time * cycle_time
+            #     self.sumw += 1
 
             print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
             print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')

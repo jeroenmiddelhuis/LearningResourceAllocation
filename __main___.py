@@ -16,8 +16,8 @@ def simulate_competition(model_name):
         if i % 5 == 0:
             print(i)
         #planner = DedicatedResourcePlanner()
-        #planner = ShortestProcessingTime()
-        planner = FIFO()
+        planner = ShortestProcessingTime()
+        #planner = FIFO()
         #planner = Random()
         #planner = PPOPlanner(f'{model_name}')
         simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', write_to=log_dir)
@@ -48,7 +48,7 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['complete_all'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
+    for model_name in ['high_utilization'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
         simulate_competition(model_name)
 
 if __name__ == "__main__":
