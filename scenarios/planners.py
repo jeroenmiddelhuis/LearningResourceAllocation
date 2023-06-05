@@ -220,7 +220,7 @@ class ShortestProcessingTime(Planner):
         return 'ShortestProcessingTime'
 
     def __init__(self):        
-        self.resource_pools = None
+        self.resource_pools = None # passed through simulator
 
     def get_possible_assignments(self, available_tasks, available_resources, resource_pools):
         possible_assignments = []
@@ -257,7 +257,7 @@ class FIFO(Planner):
         return 'FIFO'
 
     def __init__(self):        
-        self.resource_pools = None
+        self.resource_pools = None # passed through simulator
         self.task_types = None
 
     def get_possible_assignments(self, available_tasks, available_resources, resource_pools):
@@ -270,20 +270,47 @@ class FIFO(Planner):
     
     def plan(self, available_tasks, available_resources, resource_pools):
         available_tasks = available_tasks.copy()
+        available_tasks_sorted = sorted(available_tasks, key=lambda x: x.start_time)
         available_resources = available_resources.copy()        
         self.task_types = list(self.resource_pools.keys())
         assignments = []
 
         possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
         while len(possible_assignments) > 0:
-            best_assignments = []
-            for task_type in reversed(self.task_types): # check if a task_type starting at the end is possible
-                task_types = [task_type]
-                if task_type == 'Task C' or task_type == 'Task D':
-                    task_types = ['Task C', 'Task D']
+            #print(possible_assignments)
+            #print([task.task_type for task in available_tasks_sorted])
+            for priority_task in available_tasks_sorted:
+                best_assignments = []
                 for possible_assignment in possible_assignments:
-                    if possible_assignment[1] in task_types:
+                    if possible_assignment[1] == priority_task.task_type:
                         best_assignments.append(possible_assignment)
+                
+                if len(best_assignments) > 0:
+                    spt = 999999
+                    for assignment in best_assignments:
+                        processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
+                        if processing_time < spt:
+                            best_assignment = assignment
+                            spt = processing_time
+                    break    
+
+            assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
+            available_tasks.remove(assignment[1])
+            #print(available_resources, assignment[0], '\n')
+            available_resources.remove(assignment[0])
+            assignments.append(assignment)
+            possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+            available_tasks_sorted = sorted(available_tasks, key=lambda x: x.start_time)
+        return assignments 
+            
+
+        while len(possible_assignments) > 0:
+            best_assignments = []
+            for task in available_tasks_sorted: # check if a task_type starting at the end is possible
+                for possible_assignment in possible_assignments:
+                    if possible_assignment[1] == task.task_type:
+                        best_assignments.append(possible_assignment)
+                        break
                 if len(best_assignments) > 0:
                     break
 
