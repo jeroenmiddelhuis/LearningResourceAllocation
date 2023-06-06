@@ -37,13 +37,13 @@ def main():
                'a4': (0, 20),
                'a5': (0, 20),
                'a6': (0, 20),
-               'a7': (0, 20)}
+               'a7': (0, 10)}
 
     optimizer = BayesianOptimization(
         f=aggregate_sims,
         pbounds=pbounds,
         verbose=2,
-        random_state=2,
+        random_state=10,
         allow_duplicate_points=True,  # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
     )
 
@@ -56,7 +56,6 @@ def main():
             vals = [res for i, res in enumerate(optimizer.res)]
             print(len(vals))
             print('num_ites is 1')
-
 
             print('Start optimizing')
             optimizer.maximize(
