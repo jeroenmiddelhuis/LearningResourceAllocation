@@ -57,7 +57,6 @@ def main():
             print(len(vals))
             print('num_ites is 1')
 
-
             print('Start optimizing')
             optimizer.maximize(
                 init_points=0,

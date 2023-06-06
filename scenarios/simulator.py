@@ -418,7 +418,8 @@ class Simulator:
 
         if self.now > self.running_time:
             for k, v in self.cases.items():
-                print(k, v)
+                # print(k, v)
+                pass
             if self.reward_function == 'AUC':
                 current_reward = (self.running_time - self.last_reward_moment) * len(self.uncompleted_cases)
                 self.current_reward -= current_reward
@@ -441,10 +442,10 @@ class Simulator:
             #     self.sumxx += cycle_time * cycle_time
             #     self.sumw += 1
 
-            print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
-            print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
-            print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
-            print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
+            # print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
+            # print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
+            # print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
+            # print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
             
             if self.write_to != None:
                 utilisation = [busy_time/self.running_time for resource, busy_time in self.resource_total_busy_time.items()]
