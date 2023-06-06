@@ -24,6 +24,11 @@ from callbacks import SaveOnBestTrainingRewardCallback
 from callbacks import custom_schedule, linear_schedule
 
 
+class CustomPolicy(MaskableActorCriticPolicy):
+    def __init__(self, *args, **kwargs):
+        super(CustomPolicy, self).__init__(*args, **kwargs,
+                                           net_arch=[dict(pi=[512],
+                                                          vf=[512])])
 
 
 if __name__ == '__main__':
@@ -33,12 +38,12 @@ if __name__ == '__main__':
     num_cpu = 1
     load_model = False
     model_name = "ppo_masked"
-    config_type= 'high_utilization'# Different config types: 'low_utilization' # slow_server, n_system, low_utilization, high_utilization, 'complete_all'
+    config_type= 'n_system'# Different config types: 'low_utilization' # slow_server, n_system, low_utilization, high_utilization, 'complete_all'
     reward_function = 'cycle_time'
     time_steps = 1000000 # Total timesteps
-    n_steps = 2048 # Number of steps for each network update
+    n_steps = 512 # Number of steps for each network update
     # Create log dir
-    log_dir = f"./tmp/{reward_function}_{config_type}_{time_steps}_{n_steps}/" # Logging training results
+    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{n_steps}/" # Logging training results
 
     os.makedirs(log_dir, exist_ok=True)
 
@@ -56,16 +61,16 @@ if __name__ == '__main__':
     #     file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
  
     # Create the model
-    model = MaskablePPO(MaskableActorCriticPolicy, env, clip_range=0.1, learning_rate=linear_schedule(0.0001), n_steps=int(n_steps), gamma=1, verbose=1)
+    model = MaskablePPO(MaskableActorCriticPolicy, env, clip_range=0.1, learning_rate=linear_schedule(0.0001), n_steps=int(n_steps), gamma=0.999, verbose=1)
 
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
     # then, in a browser page, access localhost:6006 to see the board
-    #model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
+    model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
 
 
     # Train the agent
-    callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir, model_name=f'{config_type}_{running_time}')
+    callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
     model.learn(total_timesteps=int(time_steps), callback=callback)
 
     # For episode rewards, use env.get_episode_rewards()

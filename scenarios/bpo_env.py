@@ -121,7 +121,6 @@ class BPOEnv(Env):
                 self.simulator.run() # breaks each time at resource assignment, continues if no assignment possible
             #print('After action: ', self.simulator.now)
         else: # Postpone action
-
             unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] # sum of unassigned tasks per type
 
             available_resources = [resource for resource in self.simulator.available_resources]
@@ -132,8 +131,10 @@ class BPOEnv(Env):
                     available_resources == [resource for resource in self.simulator.available_resources])):
 
                 self.simulator.run()
-            self.simulator.current_reward -= 0#.005
-            self.simulator.total_reward -= 0#.005
+            # Penatly for postponing
+            postpone_penalty = -0.001 * len(self.simulator.available_tasks) #.05#-0.005
+            self.simulator.current_reward += postpone_penalty
+            self.simulator.total_reward += postpone_penalty
             #print('After postpone: ', self.simulator.now)
 
 

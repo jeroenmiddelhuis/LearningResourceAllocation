@@ -251,7 +251,7 @@ class Simulator:
             if event.event_type == EventType.TASK_COMPLETE:
                 resource_index = self.resources.index(event.resource)
                 #resources_busy_time[resource_index] = self.now - event.task.start_time
-                resources_assigned[resource_index] = self.task_types.index(event.task.task_type) + 1
+                resources_assigned[resource_index] = self.task_types.index(event.task.task_type) # no +1 because of start task
         
         # Old:
         # if len(self.available_tasks) > 0:
@@ -411,14 +411,15 @@ class Simulator:
 
                     if self.reward_function == 'cycle_time':
                         # self.current_reward -= cycle_time #- len(self.uncompleted_cases)
-                        # self.total_reward -= cycle_time                        
-                        self.current_reward += self.reward_case / (1 + cycle_time) #- len(self.uncompleted_cases)
-                        self.total_reward += self.reward_case / (1 + cycle_time)
+                        # self.total_reward -= cycle_time
+                        reward = self.reward_case / (1 + cycle_time)
+                        self.current_reward += reward #- len(self.uncompleted_cases)
+                        self.total_reward += reward
 
 
         if self.now > self.running_time:
-            for k, v in self.cases.items():
-                print(k, v)
+            # for k, v in self.cases.items():
+            #     print(k, v)
             if self.reward_function == 'AUC':
                 current_reward = (self.running_time - self.last_reward_moment) * len(self.uncompleted_cases)
                 self.current_reward -= current_reward
@@ -452,8 +453,8 @@ class Simulator:
                 for i in range(len(self.resources)):
                     resource_str += f'{utilisation[i]},'
                 if self.planner != None:
-                    with open(os.path.join(sys.path[0], f'{self.write_to}{self.planner}_results_{self.config_type}.txt'), "a") as file:                       
-
+                    #with open(os.path.join(sys.path[0], f'{self.write_to}{self.planner}_results_{self.config_type}.txt'), "a") as file:
+                    with open(self.write_to + f'\\{self.planner}_{self.config_type}.txt', "a") as file:
                         file.write(f"{len(self.uncompleted_cases)},{resource_str}{self.total_reward},{self.sumx/self.sumw},{np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}\n")
                 # else:
                 #     with open(f'{self.write_to}results_{self.config_type}.txt', "a") as file:

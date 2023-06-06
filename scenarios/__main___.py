@@ -6,15 +6,16 @@ import os
 import sys
 
 
-running_time = 500
+running_time = 5000
 write = True
 # Original main
 def simulate_competition(model_name):
     results = []
     times = []
-    log_dir='./results/'
+    log_dir=os.getcwd() +'\\scenarios\\results'
+    os.makedirs(log_dir, exist_ok=True)
     #log_dir=None
-    for i in range(1):
+    for i in range(11):
         if i % 5 == 0:
             print(i)
         #planner = DedicatedResourcePlanner()
@@ -31,7 +32,8 @@ def simulate_competition(model_name):
             resource_str = ''
             for resource in simulator.resources:
                 resource_str += resource + ','
-            with open(os.path.join(sys.path[0], f'{simulator.write_to}{planner}_results_{simulator.config_type}.txt'), "w") as file:
+            #with open(os.path.join(sys.path[0], f'{simulator.write_to}{planner}_results_{simulator.config_type}.txt'), "w") as file:
+            with open(simulator.write_to + f'\\{planner}_{simulator.config_type}.txt', "w") as file:
                 # Writing data to a file
                 file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
 
@@ -50,7 +52,7 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['complete_parallel'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
+    for model_name in ['n_system'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
         simulate_competition(model_name)
         print('\n')
 
