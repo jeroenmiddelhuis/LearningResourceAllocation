@@ -13,7 +13,7 @@ import pickle as pkl
 # -Get the total_reward
 def simulate_competition(A):
 
-    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='slow_server', reward_function='AUC')
+    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='low_utilization', reward_function='AUC')
     a1 = A[0]
     a2 = A[1]
     a3 = A[2]
@@ -23,10 +23,10 @@ def simulate_competition(A):
     a7 = A[6]
     print(a1, a2, a3, a4, a5, a6, a7)
     planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7,simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
-    planner1 = ShortestProcessingTime()
+    # planner1 = ShortestProcessingTime()
 
     # The config types dictates the system
-    simulator = Simulator(running_time, planner, config_type='slow_server', reward_function='AUC')
+    simulator = Simulator(running_time, planner, config_type='low_utilization', reward_function='AUC')
     # You can access some proporties from the simulation:
     # simulator.resource_pools: for each tasks 1) the resources that can process it and 2) the mean and variance of the processing time of that assignment
     # simulator.mean_interarrival_time
@@ -44,21 +44,22 @@ def simulate_competition(A):
     return CT_mean
 
 
-def aggregate_sims(A):
+def aggregate_sims(a1, a2, a3, a4, a5, a6, a7):
     import time
+    A = np.array([a1, a2, a3, a4, a5, a6, a7])
     cur_time = int(time.time())
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
     np.random.seed(seed)
     model_num = np.random.randint(0, 1000)
     tot_res = []
 
-    for ind in range(20):
+    for ind in range(1):
         res = simulate_competition(A)
         print(res)
         tot_res.append(res)
         # pkl.dump(tot_res, open('run_500_res_simple_linear_high_utilisation3_' + str(model_num) + '.pkl', 'wb'))
 
-    return tot_res #np.array(tot_res).mean()
+    return -np.array(tot_res).mean()
 
 
 def main():
