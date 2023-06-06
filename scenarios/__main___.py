@@ -52,7 +52,7 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['n_system'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
+    for model_name in ['parallel'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
         simulate_competition(model_name)
         print('\n')
 

@@ -38,10 +38,10 @@ if __name__ == '__main__':
     num_cpu = 1
     load_model = False
     model_name = "ppo_masked"
-    config_type= 'n_system'# Different config types: 'low_utilization' # slow_server, n_system, low_utilization, high_utilization, 'complete_all'
+    config_type= 'parallel'
     reward_function = 'cycle_time'
     time_steps = 1000000 # Total timesteps
-    n_steps = 512 # Number of steps for each network update
+    n_steps = 2048 # Number of steps for each network update
     # Create log dir
     log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{n_steps}/" # Logging training results
 
