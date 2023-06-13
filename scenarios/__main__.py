@@ -15,14 +15,17 @@ def simulate_competition(model_name):
     log_dir=os.getcwd() +'\\scenarios\\results'
     os.makedirs(log_dir, exist_ok=True)
     #log_dir=None
-    for i in range(11):
+    for i in range(100):
         if i % 5 == 0:
             print(i)
         #planner = DedicatedResourcePlanner()
-        planner = ShortestProcessingTime()
+        #planner = ShortestProcessingTime()
         #planner = FIFO()
-        #planner = Random()
-        #planner = PPOPlanner(f'{model_name}')
+        planner = Random()
+        #planner = PPOPlanner(os.getcwd() + '\\scenarios\\tmp\\' + f'{model_name}_10000000_2048\\' + 'best_model.zip')
+
+        if write == False:
+            log_dir = None
         simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', write_to=log_dir)
 
         if type(planner) == PPOPlanner:
@@ -52,8 +55,8 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['parallel'] :#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'complete_all']:
-        simulate_competition(model_name)
+    for model_name in ['complete_reversed']:#['complete','complete_reversed', 'complete_parallel', 'n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
+        simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 
 if __name__ == "__main__":

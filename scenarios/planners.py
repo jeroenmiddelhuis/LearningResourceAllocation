@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import List
 import pandas as pd
+from sb3_contrib import MaskablePPO
 
 
 class Planner(ABC):
@@ -270,57 +271,62 @@ class FIFO(Planner):
     
     def plan(self, available_tasks, available_resources, resource_pools):
         available_tasks = available_tasks.copy()
-        available_tasks_sorted = sorted(available_tasks, key=lambda x: x.start_time)
         available_resources = available_resources.copy()        
         self.task_types = list(self.resource_pools.keys())
-        assignments = []
 
+        assignments = []   
+        case_priority_order = sorted(list(set([task.case_id for task in available_tasks])))
+        priority_case = 0
         possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
         while len(possible_assignments) > 0:
+            priority_task_types = [task.task_type for task in available_tasks if task.case_id == case_priority_order[priority_case]]
             #print(possible_assignments)
             #print([task.task_type for task in available_tasks_sorted])
-            for priority_task in available_tasks_sorted:
-                best_assignments = []
+            
+            best_assignments = []
+            while len(best_assignments) == 0:            
                 for possible_assignment in possible_assignments:
-                    if possible_assignment[1] == priority_task.task_type:
+                    if possible_assignment[1] in priority_task_types:
                         best_assignments.append(possible_assignment)
-                
-                if len(best_assignments) > 0:
-                    spt = 999999
-                    for assignment in best_assignments:
-                        processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
-                        if processing_time < spt:
-                            best_assignment = assignment
-                            spt = processing_time
-                    break    
+                if len(best_assignments) == 0:
+                    priority_case += 1
+                    priority_task_types = [task.task_type for task in available_tasks if task.case_id == case_priority_order[priority_case]]        
+            
+            if len(best_assignments) > 0:
+                spt = 999999
+                for assignment in best_assignments:
+                    processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
+                    if processing_time < spt:
+                        best_assignment = assignment
+                        spt = processing_time
 
-            assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
-            available_tasks.remove(assignment[1])
-            #print(available_resources, assignment[0], '\n')
-            available_resources.remove(assignment[0])
-            assignments.append(assignment)
-            possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
-            available_tasks_sorted = sorted(available_tasks, key=lambda x: x.start_time)
+                assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
+                available_tasks.remove(assignment[1])
+                available_resources.remove(assignment[0])
+                assignments.append(assignment)
+                possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+                case_priority_order = sorted(list(set([task.case_id for task in available_tasks])))
+                priority_case = 0
         return assignments 
             
 
-        while len(possible_assignments) > 0:
-            best_assignments = []
-            for task in available_tasks_sorted: # check if a task_type starting at the end is possible
-                for possible_assignment in possible_assignments:
-                    if possible_assignment[1] == task.task_type:
-                        best_assignments.append(possible_assignment)
-                        break
-                if len(best_assignments) > 0:
-                    break
+        # while len(possible_assignments) > 0:
+        #     best_assignments = []
+        #     for task in available_tasks_sorted: # check if a task_type starting at the end is possible
+        #         for possible_assignment in possible_assignments:
+        #             if possible_assignment[1] == task.task_type:
+        #                 best_assignments.append(possible_assignment)
+        #                 break
+        #         if len(best_assignments) > 0:
+        #             break
 
-            best_assignment = random.choice(best_assignments)
-            assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
-            available_tasks.remove(assignment[1])
-            available_resources.remove(assignment[0])
-            assignments.append(assignment)
-            possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
-        return assignments 
+        #     best_assignment = random.choice(best_assignments)
+        #     assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
+        #     available_tasks.remove(assignment[1])
+        #     available_resources.remove(assignment[0])
+        #     assignments.append(assignment)
+        #     possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+        # return assignments 
 
 
 class Random(Planner):
@@ -431,7 +437,6 @@ class PPOPlanner(Planner):
         mask[-1] = 1 # Set postpone action to 1
 
         return list(map(bool, mask))
-
 
     def take_action(self, action):   
         return self.simulator.output[action]

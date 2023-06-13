@@ -132,7 +132,7 @@ class BPOEnv(Env):
 
                 self.simulator.run()
             # Penatly for postponing
-            postpone_penalty = 0#-0.001 * len(self.simulator.available_tasks) #.05#-0.005
+            postpone_penalty = -0.1#-0.001 * len(self.simulator.available_tasks) #.05#-0.005
             self.simulator.current_reward += postpone_penalty
             self.simulator.total_reward += postpone_penalty
             #print('After postpone: ', self.simulator.now)
