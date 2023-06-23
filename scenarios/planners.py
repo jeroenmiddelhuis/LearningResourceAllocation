@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import List
 import pandas as pd
-from sb3_contrib import MaskablePPO
+#from sb3_contrib import MaskablePPO
 
 
 class Planner(ABC):
@@ -294,11 +294,13 @@ class FIFO(Planner):
             
             if len(best_assignments) > 0:
                 spt = 999999
-                for assignment in best_assignments:
-                    processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
-                    if processing_time < spt:
-                        best_assignment = assignment
-                        spt = processing_time
+                best_assignment = random.choice(best_assignments)
+                #print()
+                # for assignment in best_assignments:
+                #     processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
+                #     if processing_time < spt:
+                #         best_assignment = assignment
+                #         spt = processing_time
 
                 assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
                 available_tasks.remove(assignment[1])
@@ -360,47 +362,6 @@ class Random(Planner):
             assignments.append(assignment)
             possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
         return assignments 
-
-class DedicatedResourcePlanner(Planner):
-    """A :class:`.Planner` that assigns tasks to resources in an anything-goes manner."""
-
-    def __str__(self) -> str:
-        return 'DedicatedResourcePlanner'
-
-    def plan(self, available_tasks, available_resources,resource_pools):
-        assignments = []
-        available_resources = available_resources.copy()
-        available_tasks = available_tasks.copy()
-        # assign the first unassigned task to the first available resource, the second task to the second resource, etc.
-        for task in available_tasks:
-            if task.task_type == 'Task B':
-                if 'Resource 1' in available_resources:
-                    assignments.append(('Resource 1', task))
-                    available_resources.remove('Resource 1')
-                    available_tasks.remove(task)
-                elif 'Resource 2' in available_resources:
-                    assignments.append(('Resource 2', task))
-                    available_resources.remove('Resource 2')
-                    available_tasks.remove(task)  
-        for task in available_tasks:
-            if task.task_type == 'Task A':
-                if 'Resource 1' in available_resources:
-                    assignments.append(('Resource 1', task))
-                    available_resources.remove('Resource 1')
-                    available_tasks.remove(task)
-                elif 'Resource 2' in available_resources:
-                    assignments.append(('Resource 2', task))
-                    available_resources.remove('Resource 2')
-                    available_tasks.remove(task)
-
-        # for assignment in assignments:
-        #     if assignment[0].task_type == 'Task B' and assignment[1] != 'Resource 1':
-        #         print('wrong 1')
-        #     elif assignment[0].task_type == 'Task A' and assignment[1] != 'Resource 2':
-        #         print('wrong 2')    
-        
-        return assignments
-
 
 # DRL based assignment
 class PPOPlanner(Planner):

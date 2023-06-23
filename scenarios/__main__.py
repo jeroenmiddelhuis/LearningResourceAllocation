@@ -1,5 +1,5 @@
 from simulator import Simulator
-from planners import GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner, PPOPlanner, FIFO, Random
+from planners import GreedyPlanner, ShortestProcessingTime, FIFO, Random
 from time import time
 import numpy as np
 import os
@@ -20,16 +20,17 @@ def simulate_competition(model_name):
             print(i)
         #planner = DedicatedResourcePlanner()
         #planner = ShortestProcessingTime()
-        #planner = FIFO()
-        planner = Random()
-        #planner = PPOPlanner(os.getcwd() + '\\scenarios\\tmp\\' + f'{model_name}_10000000_2048\\' + 'best_model.zip')
+        planner = FIFO()
+        #planner = Random()       
 
+        #planner = PPOPlanner(os.getcwd() + "\\scenarios\\tmp\\" + f"{model_name}_30000000_2048" + "\\best_model.zip")
+                             
         if write == False:
             log_dir = None
         simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', write_to=log_dir)
 
-        if type(planner) == PPOPlanner:
-            planner.linkSimulator(simulator)
+        # if type(planner) == PPOPlanner:
+        #     planner.linkSimulator(simulator)
 
         if write == True and i == 0:
             resource_str = ''
@@ -55,7 +56,7 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['complete_reversed']:#['complete','complete_reversed', 'complete_parallel', 'n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
+    for model_name in ['n_system']:#['complete','complete_reversed', 'complete_parallel', 'n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 
