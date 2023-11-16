@@ -17,16 +17,13 @@ class BPOEnv(Env):
         self.reward_function = reward_function
         self.postpone_penalty = postpone_penalty
         self.write_to = write_to
-        self.action_number = [0, 0, 0]
-        self.action_time = [0, 0, 0]
         self.step_print = False
         self.last_reward = 0
         self.additional_rewards = 0
         self.previous_reward_time = 0
 
         self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to)
-        #print(self.simulator.input)
-        #print(self.simulator.output)
+
         #define lows and highs for different sections of the input
         lows = np.array([0 for x in range(len(self.simulator.input))])
 
@@ -34,7 +31,8 @@ class BPOEnv(Env):
         highs = np.array([1 for x in range(len(self.simulator.resources))] +\
                          [float(len(self.simulator.task_types)) for x in range(len(self.simulator.resources))] +\
                          [1 for x in range(len(self.simulator.task_types) - 1)]) #+\
-                         #[np.finfo(np.float64).max])/        
+                         #[np.finfo(np.float64).max])
+        
         
         self.observation_space = spaces.Box(low=lows,
                                             high=highs,
@@ -42,7 +40,10 @@ class BPOEnv(Env):
 
         # spaces.Discrete returns a number between 0 and len(self.simulator.output)
         self.action_space = spaces.Discrete(len(self.simulator.output)) #action space is the cartesian product of tasks and resources in their resource pool
-    
+        
+        while (sum(self.define_action_masks()) <= 1):
+            self.simulator.run() # Run the simulator to get to the first decision
+
 
     def step(self, action):
         if action == len(self.simulator.output)-1:
@@ -56,24 +57,21 @@ class BPOEnv(Env):
             state = self.simulator.get_state()
             print(state, '\n')
 
-
         # 1 Process action
         # 2 Do the timestep
         # 3 Return reward
         # Assign one resources per iteration. If possible, another is assigned in next step without advancing simulator
         assignment = self.simulator.output[action] # (Task X, Resource Y)
-        #print(assignment)
         if self.step_print: print('Action:\t', assignment)
         if assignment != 'Postpone':            
             assignment = (assignment[0], (next((x for x in self.simulator.available_tasks if x.task_type == assignment[1]), None)))
             self.simulator.process_assignment(assignment)
-            while (sum(self.simulator.define_action_masks()) <= 1) and (self.simulator.status != 'FINISHED'):
+            while (sum(self.define_action_masks()) <= 1) and (self.simulator.status != 'FINISHED'):
                 self.simulator.run()
         else: # Postpone
-            self.simulator.current_reward -= self.postpone_penalty
-            unassigned_tasks =  [min(1.0, sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks])/100) for el in self.simulator.task_types] # sum of unassigned tasks per type
+            unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] # sum of unassigned tasks per type
             available_resources = [resource for resource in self.simulator.available_resources]
-            while (self.simulator.status != 'FINISHED') and ((sum(self.simulator.define_action_masks()) <= 1) or (unassigned_tasks == [min(1.0, sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks])/100) for el in self.simulator.task_types] and \
+            while (self.simulator.status != 'FINISHED') and ((sum(self.define_action_masks()) <= 1) or (unassigned_tasks == [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] and \
                     available_resources == [resource for resource in self.simulator.available_resources])):
                 self.simulator.run()
 
@@ -86,9 +84,9 @@ class BPOEnv(Env):
                     self.simulator.current_reward -= current_reward
                     self.simulator.total_reward -= current_reward
                     self.simulator.last_reward_moment = self.simulator.now
-            return self.simulator.state, reward, True, {}, {}
+            return self.simulator.get_state(), reward, True, {}, {}
         else:
-            return self.simulator.state, reward, False, {}, {}
+            return self.simulator.get_state(), reward, False, {}, {}
 
 
     def reset(self, seed: int | None = None):
@@ -108,54 +106,56 @@ class BPOEnv(Env):
         print("-------Resetting environment-------")
         self.__init__(self.running_time, self.config_type, reward_function=self.reward_function, 
                       postpone_penalty=self.postpone_penalty, write_to=self.write_to)
-        
-        while (sum(self.simulator.define_action_masks()) <= 1):
-            self.simulator.run() # Run the simulator to get to the first decision
-            #self.simulator.state = self.simulator.get_state()
-        
+
         # while (sum(self.define_action_masks()) <= 1):
         #     self.simulator.run() # Run the simulator to get to the first decision
 
         #self.finished = False
         
-        self.previous_state = self.simulator.state
+        state = self.simulator.get_state()
+        self.previous_state = state
         self.previous_mask = self.action_masks()
-        return self.simulator.state, {}
+        return state, {}
 
 
     def render(self, mode='human', close=False):
         print(f"Average reward: {self.average_cycle_time}")
 
-
     # define mask based on current environment state (only the 3 vectors that are also known at inference time!)
-    # def define_action_masks(self) -> List[bool]:
-    #     mask = [True if resource in self.simulator.available_resources and task in [_task.task_type for _task in self.simulator.available_tasks] else False 
-    #             for resource, task in self.simulator.output[:-1]] + [True]
-    #     return mask
+    def define_action_masks(self) -> List[bool]:
+        state = self.simulator.get_state()
+        mask = [0 for _ in range(len(self.simulator.output))]
 
-        
+        for task_type in self.simulator.task_types:
+            if task_type != 'Start':
+                if state[self.simulator.input.index(task_type)] > 0:
+                    for resource in self.simulator.resource_pools[task_type]:
+                        if state[self.simulator.input.index(resource + '_availability')] > 0:
+                            mask[self.simulator.output.index((resource, task_type))] = 1
 
+        mask[-1] = 1 # Set postpone action to 1
 
-    # # define mask based on current environment state (only the 3 vectors that are also known at inference time!)
-    # def define_action_masks(self) -> List[bool]:
-    #     #state = self.simulator.get_state()
-    #     state = self.simulator.state
-    #     mask = [0 for _ in range(len(self.simulator.output))]
-
-    #     for task_type in self.simulator.task_types:
-    #         if task_type != 'Start':
-    #             if state[self.simulator.input.index(task_type)] > 0:
-    #                 for resource in self.simulator.resource_pools[task_type]:
-    #                     if state[self.simulator.input.index(resource + '_availability')] > 0:
-    #                         mask[self.simulator.output.index((resource, task_type))] = 1
-
-    #     mask[-1] = 1 # Set postpone action to 1
-
-    #     mask = [True if _mask == 1 else False for _mask in mask]
-
-    #     self.simulator.last_mask = mask
-    #     self.simulator.bpo_state = state
-    #     return mask#list(map(bool, mask))
+        return list(map(bool, mask))
 
     def action_masks(self) -> List[bool]:
-        return self.simulator.define_action_masks()
+        return self.define_action_masks()
+
+    """
+    TRAINING
+    Needed:
+        >Functions:
+            -Simulator step function: continues until plan is called
+            -Check output function
+            -Get state function
+            -Action function
+                *If multiple actions necessary -> better to invoke step function multiple times
+                and pass the assignments to the simulator once
+            -Reward function
+        >Adjustments:
+            -Sample interarrivals during training (no fixed file)
+
+    Optional:
+        -Use Env.close() -> disposes all garbage
+
+    INFERENCE
+    """

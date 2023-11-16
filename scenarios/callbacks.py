@@ -1,6 +1,6 @@
 import os
 
-import gym
+import gymnasium as gym
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -48,9 +48,9 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
             #     else:
             #         self.episode_lengths.append(x[-1]-x[-2])
             #print(x,y, self.episode_lengths)
-            if len(x) > 5:
+            if len(x) > 10:
                 # Mean training reward over the last 100 episodes
-                mean_reward = np.mean(y[-5:])
+                mean_reward = np.mean(y[-10:])
                 # nr_eps = 5
                 # mean_reward = np.mean([y[-i]/self.episode_lengths[-i] for i in range(len(y[-nr_eps:]))]) 
                 if self.verbose >= 1:

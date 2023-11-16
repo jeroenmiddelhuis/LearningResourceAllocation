@@ -1,6 +1,6 @@
-from simulator import Simulator
+from simulator_RLRAM import Simulator
 from planners import PPOPlanner
-from planners_benchmark import ParkSong, GreedyPlanner, ShortestProcessingTime, FIFO, Random
+from planners_benchmark import RLRAM
 from time import time
 import numpy as np
 import os
@@ -19,20 +19,14 @@ def simulate_competition(model_name):
     for i in range(100):
         if i % 5 == 0:
             print(i)
-        #planner = DedicatedResourcePlanner()
-        #planner = ShortestProcessingTime()
-        planner = FIFO()
-        #planner = Random()       
-        #planner = ParkSong()
-        #planner = PPOPlanner(os.getcwd() + "\\scenarios\\tmp\\" + f"{model_name}_50000000_51200" + "\\best_model.zip")
+        
+
+        planner = RLRAM(f'./scenarios/RLRAM_models/{model_name}.json')
 
                              
         if write == False:
             log_dir = None
         simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', write_to=log_dir)
-
-        if type(planner) == PPOPlanner or type(planner) == ParkSong:
-            planner.linkSimulator(simulator)
 
         if write == True and i == 0:
             resource_str = ''
@@ -42,7 +36,6 @@ def simulate_competition(model_name):
             with open(simulator.write_to + f'\\{planner}_{simulator.config_type}.txt', "w") as file:
                 # Writing data to a file
                 file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
-
 
 
         t1 = time()
@@ -58,7 +51,7 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['n_system']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
+    for model_name in ['down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 

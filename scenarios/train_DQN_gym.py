@@ -24,7 +24,7 @@ from callbacks import SaveOnBestTrainingRewardCallback
 from callbacks import custom_schedule, linear_schedule
 
 
-nr_layers = 2
+nr_layers = 3
 nr_neurons = 64
 clip_fraction = 0.1
 n_steps = 51200
@@ -71,7 +71,7 @@ if __name__ == '__main__':
  
 
     # Create the model
-    model = MaskablePPO(CustomPolicy, env, clip_range=0.1, learning_rate=linear_schedule(3e-4), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
+    model = MaskablePPO(CustomPolicy, env, clip_range=0.2, learning_rate=linear_schedule(3e-4), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
 
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
