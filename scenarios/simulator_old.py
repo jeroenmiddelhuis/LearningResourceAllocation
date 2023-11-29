@@ -4,6 +4,7 @@ import sys
 from enum import Enum, auto
 from collections import deque
 import random
+from planners import GreedyPlanner
 import json
 
 
@@ -66,7 +67,7 @@ class Task:
 
 
 class Simulator:
-    def __init__(self, running_time, planner, config_type, reward_function=None, write_to=None):
+    def __init__(self, running_time, planner, config_type, reward_function=None, write_to=None, cv=0.25):
         self.config_type = config_type
         with open(os.path.join(sys.path[0], "config.txt"), "r") as f:
             data = f.read()
@@ -85,12 +86,13 @@ class Simulator:
         self.sumxx = 0
         self.sumw = 0
 
-        # self.cv = cv # for Gamma distribution
+        self.cv = cv  # for Gamma distribution
 
         self.available_tasks = []
         self.waiting_parallel_tasks = []
         self.reserved_tasks = []
         self.completed_tasks = []
+        self.cases = {}
 
         self.available_resources = []
         self.reserved_resources = []
@@ -104,9 +106,6 @@ class Simulator:
         self.resource_pools = config['resource_pools']
         self.transitions = config['transitions']
 
-        # self.task_types = sorted(list(self.task_types))
-        # self.resources = sorted(list(set(np.hstack(list(self.resources)))))
-
         self.planner = planner
         if self.planner != None: self.planner.resource_pools = self.resource_pools
 
@@ -116,12 +115,11 @@ class Simulator:
         # Reinforcement learning
         self.input = [resource + '_availability' for resource in self.resources] + \
                      [resource + '_to_task' for resource in self.resources] + \
-                     [task_type for task_type in self.task_types if task_type != 'Start']  # +\
-        # ['Total tasks'] # Should be lists of strings
+                     self.task_types + \
+                     ['Total tasks']  # Should be lists of strings
         #                      [resource + '_busy_time' for resource in self.resources] + \
         self.output = [(resource, task) for task in self.task_types[1:] for resource in self.resources if
                        resource in self.resource_pools[task]] + ['Postpone']
-        self.state = self.get_state()
 
         self.reward_function = reward_function
         self.write_to = write_to
@@ -136,12 +134,8 @@ class Simulator:
         # print(self.reward_task_complete)
 
         self.last_reward_moment = 0
-        self.last_mask = []
-        self.bpo_state = []
 
-        # init simulation
-        self.available_resources = [resource for resource in self.resources]
-        self.events.append(Event(EventType.CASE_ARRIVAL, self.sample_interarrival_time()))
+        self.init_simulation()
 
     def generate_initial_task(self, case_id):
         # rvs = random.random()
@@ -154,9 +148,8 @@ class Simulator:
         # return Task(self.now, case_id, task_type)
         return self.generate_next_task(Task(self.now, case_id, 'Start'))
 
-    def generate_next_task(self, current_task, predict=False):
+    def generate_next_task(self, current_task):
         # print(current_task.task_type, self.transitions[current_task.task_type])
-        if predict == False: case = self.uncompleted_cases[current_task.case_id]
         if sum(self.transitions[current_task.task_type]) <= 1:  # Activity not in parallel
             rvs = random.random()
             prob = 0
@@ -169,7 +162,6 @@ class Simulator:
                 if rvs <= prob:
                     next_task_type = self.task_types[i]
                     break
-            if predict == False: case.add_task(next_task_type)
             return [Task(self.now, current_task.case_id, next_task_type)]
 
         else:  # Task is in parallel
@@ -200,7 +192,6 @@ class Simulator:
                         next_tasks.append(Task(self.now, current_task.case_id, next_task_type, parallel=True))
 
             for next_task in next_tasks:
-                if predict == False: case.add_task(next_task.task_type)
                 next_task.nr_parallel = len(next_tasks)
             # print([task.task_type for task in next_tasks])
             return next_tasks
@@ -211,25 +202,19 @@ class Simulator:
         return case
 
     def process_assignment(self, assignment):
-
+        # print(assignment, [task.task_type for task in self.available_tasks], [resource for resource in self.available_resources])
         if self.reward_function == 'task':
             self.current_reward += self.reward_task_start
             self.total_reward += self.reward_task_start
-        if self.reward_function == 'queue':
-            self.current_reward += 1 / (1 + self.now - assignment[1].start_time)
-            self.total_reward += 1 / (1 + self.now - assignment[1].start_time)
+        self.available_resources.remove(assignment[0])
+        self.available_tasks.remove(assignment[1])
+        # self.events.append(Event(EventType.TASK_START, self.now, assignment[0], assignment[1]))
+        # self.events.sort()
 
-        if assignment[0] in self.available_resources and assignment[1] in self.available_tasks:
-            self.available_resources.remove(assignment[0])
-            self.available_tasks.remove(assignment[1])
-
-            self.state = self.get_state()
-
-            self.resource_last_start[assignment[0]] = self.now
-            pt = self.sample_processing_time(assignment[0], assignment[1].task_type)
-            self.events.append(Event(EventType.TASK_COMPLETE, self.now + pt, assignment[1], assignment[0]))
-        else:
-            print('ERROR', assignment)
+        self.resource_last_start[assignment[0]] = self.now
+        assignment[1].start_time = self.now
+        pt = self.sample_processing_time(assignment[0], assignment[1].task_type)
+        self.events.append(Event(EventType.TASK_COMPLETE, self.now + pt, assignment[1], assignment[0]))
         self.events.sort()
 
     def sample_interarrival_time(self):
@@ -253,39 +238,67 @@ class Simulator:
             pt = random.gauss(mu, sigma)
         return pt
 
+    def init_simulation(self):
+        self.available_resources = [resource for resource in self.resources]
+        self.events.append(Event(EventType.CASE_ARRIVAL, self.sample_interarrival_time()))
+
     def get_state(self):
         ### Resource binary, busy time, assigned to + nr of each task
         resources_available = [1 if x in self.available_resources else 0 for x in self.resources]
-
         # resources_busy_time = [0 for _ in range(len(self.resources))]
         resources_assigned = [0 for _ in range(len(self.resources))]
         for event in self.events:
             if event.event_type == EventType.TASK_COMPLETE:
                 resource_index = self.resources.index(event.resource)
                 # resources_busy_time[resource_index] = self.now - event.task.start_time
-                resources_assigned[resource_index] = self.task_types.index(event.task.task_type) / (
-                            len(self.task_types) - 1)
+                resources_assigned[resource_index] = self.task_types.index(event.task.task_type) + 1
+
+        # Old:
+        # if len(self.available_tasks) > 0:
+        #     task_types_num = [sum([1 if task.task_type == el else 0 for task in self.available_tasks]) for el in self.task_types]
+        # else:
+        #     task_types_num = [0 for el in self.task_types]
+
+        # return resources_available + resources_busy_time + resources_assigned + task_types_num
 
         if len(self.available_tasks) > 0:
-            task_types_num = [min(1, sum([1 if task.task_type == el else 0 for task in self.available_tasks]) / 100) for
-                              el in self.task_types if el != 'Start']  # len(self.available_tasks)
+            task_types_num = [
+                sum([1 if task.task_type == el else 0 for task in self.available_tasks]) / len(self.available_tasks) for
+                el in self.task_types]
         else:
-            task_types_num = [0 for el in self.task_types if el != 'Start']
-        return resources_available + resources_assigned + task_types_num
+            task_types_num = [0 for el in self.task_types]
+        # + resources_busy_time +
+        return resources_available + resources_assigned + task_types_num + [len(self.available_tasks)]
 
-    def define_action_masks(self):
-        return [True if resource in self.available_resources and task in [_task.task_type for _task in
-                                                                          self.available_tasks] else False
-                for resource, task in self.output[:-1]] + [True]
+        ### Resource binary + proportion tasks + total task
+        # av_resources_ones = [1 if x in self.available_resources else 0 for x in self.resources]
+
+        # # Number of tasks
+        # # task_types_num =  [np.sum(el in [o.task_type for o in self.available_tasks]) for el in self.task_types]
+
+        # # Normalized to max
+        # if len(self.available_tasks) > 0:
+        #     task_types_num = [sum([1 if task.task_type == el else 0 for task in self.available_tasks])/len(self.available_tasks) for el in self.task_types]
+        # else:
+        #     task_types_num = [0 for el in self.task_types]
+
+        # return av_resources_ones + task_types_num + [len(self.available_tasks)]
 
     def run(self):
         while self.now <= self.running_time:
+            # print(self.get_state())
             event = self.events.pop(0)
             self.now = event.moment
             if self.now <= self.running_time:  # To prevent next event time after running time
                 if event.event_type == EventType.CASE_ARRIVAL:
+                    if self.reward_function == 'AUC':
+                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+                        self.current_reward -= current_reward
+                        self.total_reward -= current_reward
+                        self.last_reward_moment = self.now
 
                     case = self.generate_case()  # Automatically added to dict of uncompleted cases
+                    self.cases[case.id] = []
                     for task in self.generate_initial_task(case.id):
                         self.available_tasks.append(task)
                     self.events.append(Event(EventType.CASE_ARRIVAL,
@@ -295,19 +308,24 @@ class Simulator:
                     self.events.sort()
 
                 if event.event_type == EventType.PLAN_TASKS:
+                    # Calculate reward
+                    if self.reward_function == 'AUC':
+                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+                        self.current_reward -= current_reward
+                        self.total_reward -= current_reward
+                        self.last_reward_moment = self.now
+
                     if self.planner == None:  # DRL algorithm handles processing of assignments (training and inference)
                         # there only is an assignment if there are free resources and tasks
-                        if sum(self.define_action_masks()) > 0:
-                            self.state = self.get_state()
-                            # print(self.state, self.now)
+                        if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
                             break  # Return to gym environment
                     else:  # at inference time, we call the plan function of the planner
-                        self.state = self.get_state()
                         assignments = self.planner.plan(self.available_tasks, self.available_resources,
                                                         self.resource_pools)
                         for assignment in assignments:
                             self.process_assignment(
                                 assignment)  # Reserves the task and resource, schedules TASK_START event
+                            # Reward +1 for each task start
 
                 # if event.event_type == EventType.TASK_START:
                 #     event.task.start_time = self.now
@@ -316,8 +334,10 @@ class Simulator:
                 #     self.events.sort()
 
                 if event.event_type == EventType.TASK_COMPLETE:
-                    case = self.uncompleted_cases[event.task.case_id]
-                    case.complete_task(event.task.task_type)
+                    self.cases[event.task.case_id].append([event.task.task_type, event.resource, np.round(self.now, 2)])
+                    if self.reward_function == 'task':
+                        self.current_reward += self.reward_task_complete[event.task.task_type]
+                        self.total_reward += self.reward_task_complete[event.task.task_type]
 
                     # Release resource
                     self.available_resources.append(event.resource)
@@ -351,7 +371,6 @@ class Simulator:
                     else:
                         # If the completed task is a parallel task and other parallel tasks are still being processed, then wait for completion
                         if event.task.parallel == True:
-                            # print(event.task.task_type, event.task.case_id)
                             if sum([1 if event.task.parallel_id == task.parallel_id else 0 for task in
                                     self.waiting_parallel_tasks]) != event.task.nr_parallel - 1:
                                 self.waiting_parallel_tasks.append(event.task)
@@ -375,8 +394,8 @@ class Simulator:
                     self.events.sort()
 
                 if event.event_type == EventType.CASE_DEPARTURE:
+                    self.cases[event.task.case_id].append(['completed', self.now])
                     case = self.uncompleted_cases[event.task.case_id]
-                    # print(case.completed_tasks, case.uncompleted_tasks)
                     case.departure_time = self.now
                     del self.uncompleted_cases[case.id]
                     self.completed_cases[event.task.case_id] = case
@@ -386,17 +405,34 @@ class Simulator:
                     self.sumxx += cycle_time * cycle_time
                     self.sumw += 1
 
-                    if self.reward_function == 'case_completion':
-                        self.current_reward += 1
-                        self.total_reward += 1
-
                     # Calculate reward
+                    if self.reward_function == 'AUC':
+                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+                        self.current_reward -= current_reward
+                        self.total_reward -= current_reward
+                        self.last_reward_moment = self.now
+
+                    if self.reward_function == 'task':
+                        self.current_reward += self.reward_case  # - len(self.uncompleted_cases)
+                        self.total_reward += self.reward_case
+                        # print(cycle_time, self.reward_case / cycle_time)
+
                     if self.reward_function == 'cycle_time':
-                        reward = 1 / (1 + cycle_time)
-                        self.current_reward += reward  # - len(self.uncompleted_cases)
-                        self.total_reward += reward
+                        # self.current_reward -= cycle_time #- len(self.uncompleted_cases)
+                        # self.total_reward -= cycle_time
+                        self.current_reward += self.reward_case / (1 + cycle_time)  # - len(self.uncompleted_cases)
+                        self.total_reward += self.reward_case / (1 + cycle_time)
 
         if self.now > self.running_time:
+            for k, v in self.cases.items():
+                # print(k, v)
+                pass
+            if self.reward_function == 'AUC':
+                current_reward = (self.running_time - self.last_reward_moment) * len(self.uncompleted_cases)
+                self.current_reward -= current_reward
+                self.total_reward -= current_reward
+                self.last_reward_moment = self.now
+
             # if self.reward_function == 'case_task':
             #     self.current_reward -= len(self.uncompleted_cases)
             #     self.total_reward -= len(self.uncompleted_cases)
@@ -408,18 +444,16 @@ class Simulator:
                         event.resource]
 
             # Uncomment to include the cycle time of uncompleted cases
-            for case in self.uncompleted_cases.values():
-                cycle_time = self.running_time - case.arrival_time
-                self.sumx += cycle_time
-                self.sumxx += cycle_time * cycle_time
-                self.sumw += 1
+            # for case in self.uncompleted_cases.values():
+            #     cycle_time = self.running_time - case.arrival_time
+            #     self.sumx += cycle_time
+            #     self.sumxx += cycle_time * cycle_time
+            #     self.sumw += 1
 
             # print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
-            # print(
-            #     f'Resource utilisation: {[(resource, busy_time / self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
+            # print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
             # print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
-            # print(
-            #     f'Mean cycle time: {self.sumx / self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
+            # print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
 
             if self.write_to != None:
                 utilisation = [busy_time / self.running_time for resource, busy_time in
@@ -428,8 +462,9 @@ class Simulator:
                 for i in range(len(self.resources)):
                     resource_str += f'{utilisation[i]},'
                 if self.planner != None:
-                    # with open(os.path.join(sys.path[0], f'{self.write_to}{self.planner}_results_{self.config_type}.txt'), "a") as file:
-                    with open(self.write_to + f'\\{self.planner}_{self.config_type}.txt', "a") as file:
+                    with open(
+                            os.path.join(sys.path[0], f'{self.write_to}{self.planner}_results_{self.config_type}.txt'),
+                            "a") as file:
                         file.write(
                             f"{len(self.uncompleted_cases)},{resource_str}{self.total_reward},{self.sumx / self.sumw},{np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}\n")
                 # else:

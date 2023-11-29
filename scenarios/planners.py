@@ -29,7 +29,7 @@ class Bayes_planner(Planner):
     def __str__(self) -> str:
         return 'Bayesian'
 
-    def __init__(self, a1, a2, a3, a4, a5, a6, a7,simulator1):
+    def __init__(self, a1, a2, a3, a4, a5, a6, a7, simulator1):
 
         self.a1 = a1
         self.a2 = a2
@@ -38,6 +38,10 @@ class Bayes_planner(Planner):
         self.a5 = a5
         self.a6 = a6
         self.a7 = a7
+
+
+
+
 
         df = pd.DataFrame([])
 
@@ -49,6 +53,19 @@ class Bayes_planner(Planner):
                 df.loc[ind, key] = simulator1.resource_pools[tasks[ind]][key][0]
 
         self.df = df
+        queues_lenghts = {}
+        queue_task_status = {}
+
+        self.tasks = tasks
+
+        for task in tasks:
+            queues_lenghts[task] = 0
+            queue_task_status[task] = []
+
+
+
+        self.queue_lenghts = queues_lenghts
+        self.queue_task_status = queue_task_status
 
         task_ranking_dict = {}
 
@@ -78,7 +95,13 @@ class Bayes_planner(Planner):
 
             task_ranking_dict[task] = task_ranking
 
+        current_res = {}
+        for resource in res_list:
+            current_res[resource] = []
 
+        self.current_res = current_res
+
+        self.busy_res = []
 
         resourse_ranking_dict = {}
 
@@ -148,6 +171,20 @@ class Bayes_planner(Planner):
         available_resources = available_resources.copy()
         available_tasks = available_tasks.copy()
 
+        curr_queues = {}
+        for task in self.tasks:
+            curr_queues[task] = 0
+
+        for task_ in available_tasks:
+            curr_queues[task_.task_type] += 1
+
+        # for res in available_resources:
+        #     if res in self.busy_res:
+        #         task_freed = self.current_res[res][0]
+        #         self.busy_res.remove(res)
+        #         self.current_res[res].remove(task_freed)
+        #         self.queue_lenghts[task_freed] -= 1
+
         # assign the first unassigned task to the first available resource, the second task to the second resource, etc.
 
         assignments = []
@@ -163,14 +200,11 @@ class Bayes_planner(Planner):
                 task = assignment[1]
 
                 mean_val = self.df.loc[self.df['task'] == task.task_type, resource].item()
-                var_val = self.df.loc[self.df['task'] == task.task_type, resource].item()
+                var_val = self.df.loc[self.df['task'] == task.task_type, resource].item()**2
                 prob_fin = self.df.loc[self.df['task'] == task.task_type, 'prob_finish'].item()
-                if task.task_type in queue_len_keys:
-                    queue_lenght = queue_lens[task.task_type]
-                else:
-                    queue_lenght = 0
 
-                score = self.a1 * mean_val+self.a2 * var_val - self.a3 * prob_fin - self.a4 * queue_lenght\
+
+                score = self.a1 * mean_val+self.a2 * var_val - self.a3 * prob_fin - self.a4 * (curr_queues[task.task_type]+1)\
                         + self.a5*self.resource_ranking_dict_score[(resource, task.task_type)]+self.a6*self.task_ranking_dict_score[(task.task_type, resource)]
                 curr_ind = df_scores.shape[0]
 
@@ -182,7 +216,13 @@ class Bayes_planner(Planner):
 
             df_scores = df_scores.sort_values(by=['score']).reset_index()
             best_score = df_scores.loc[0, 'score']
-            if best_score < self.a7:
+
+            if best_score < self.a7*1.5:
+
+                # self.queue_lenghts[df_scores.loc[0, 'task_type']] += 1
+                # self.busy_res.append(df_scores.loc[0, 'resource'])
+                # self.current_res[df_scores.loc[0, 'resource']].append(df_scores.loc[0, 'task_type'])
+
                 available_resources.remove(df_scores.loc[0, 'resource'])
                 available_tasks.remove(df_scores.loc[0, 'task'])
                 assignments.append((df_scores.loc[0, 'resource'], df_scores.loc[0, 'task']))

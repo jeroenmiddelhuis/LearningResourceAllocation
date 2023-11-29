@@ -37,56 +37,60 @@ def main():
                'a4': (0, 20),
                'a5': (0, 20),
                'a6': (0, 20),
-               'a7': (0, 20)}
+               'a7': (50, 550)}
 
     optimizer = BayesianOptimization(
         f=aggregate_sims,
         pbounds=pbounds,
         verbose=2,
-        random_state=2,
+        random_state=10,
         allow_duplicate_points=True,  # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
     )
 
-    for ind in tqdm(range(2)):
-
-
-        if os.path.exists('./logs.json'):
-
-            load_logs(optimizer, logs=["./logs.json"]);
-            vals = [res for i, res in enumerate(optimizer.res)]
-            print(len(vals))
-            print('num_ites is 1')
-
-
-            print('Start optimizing')
-            optimizer.maximize(
-                init_points=0,
-                n_iter=1,
+    optimizer.maximize(
+                init_points=5,
+                n_iter=120,
             )
 
-            logger = JSONLogger(path="./logs.json")
-            optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
+    pkl.dump(optimizer, open('optimizier_complete.pkl', 'wb'))
 
-            load_logs(optimizer, logs=["./logs.json"]);
-            vals = [res for i, res in enumerate(optimizer.res)]
-            print(len(vals))
-
-        else:
-            print('num_ites is 7')
-            logger = JSONLogger(path="./logs.json")
-            optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
-
-            print('Start optimizing')
-            optimizer.maximize(
-                init_points=2,
-                n_iter=5,
-            )
-
-
-        print('Finish')
-        vals = [res for i, res in enumerate(optimizer.res)]
-
-        pkl.dump(vals, open('res_complete_all.pkl', 'wb'))
+    # for ind in tqdm(range(2)):
+    #     if os.path.exists('./logs.json'):
+    #
+    #         load_logs(optimizer, logs=["./logs.json"]);
+    #         vals = [res for i, res in enumerate(optimizer.res)]
+    #         print(len(vals))
+    #         print('num_ites is 1')
+    #
+    #         print('Start optimizing')
+    #         optimizer.maximize(
+    #             init_points=0,
+    #             n_iter=1,
+    #         )
+    #
+    #         logger = JSONLogger(path="./logs.json")
+    #         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
+    #
+    #         load_logs(optimizer, logs=["./logs.json"]);
+    #         vals = [res for i, res in enumerate(optimizer.res)]
+    #         print(len(vals))
+    #
+    #     else:
+    #         print('num_ites is 7')
+    #         logger = JSONLogger(path="./logs.json")
+    #         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
+    #
+    #         print('Start optimizing')
+    #         optimizer.maximize(
+    #             init_points=2,
+    #             n_iter=5,
+    #         )
+    #
+    #
+    #     print('Finish')
+    #     vals = [res for i, res in enumerate(optimizer.res)]
+    #
+    #     pkl.dump(vals, open('res_complete_all.pkl', 'wb'))
 
 
 
