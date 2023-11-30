@@ -33,7 +33,7 @@ def simulate_competition(A, system):
 
 
     # print(a1, a2, a3, a4, a5, a6, a7)
-    planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7,simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
+    planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7, simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
     # planner1 = ShortestProcessingTime()
 
     # The config types dictates the system
