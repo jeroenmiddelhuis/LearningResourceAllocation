@@ -5,15 +5,15 @@ import pandas as pd
 running_time = 5000
 import numpy as np
 import pickle as pkl
-
+import os
 
 # You can build your bayesian optimization model around this framework:
 # -Determine parameters for the planner
 # -Run the simulation with the planner
 # -Get the total_reward
-def simulate_competition(A):
+def simulate_competition(A, system):
 
-    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='complete', reward_function='AUC')
+    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type=system, reward_function='AUC')
     a1 = A[0]
     a2 = A[1]
     a3 = A[2]
@@ -37,7 +37,7 @@ def simulate_competition(A):
     # planner1 = ShortestProcessingTime()
 
     # The config types dictates the system
-    simulator = Simulator(running_time, planner, config_type='complete', reward_function='AUC')
+    simulator = Simulator(running_time, planner, config_type=system, reward_function='AUC')
     # You can access some proporties from the simulation:
     # simulator.resource_pools: for each tasks 1) the resources that can process it and 2) the mean and variance of the processing time of that assignment
     # simulator.mean_interarrival_time
@@ -55,8 +55,15 @@ def simulate_competition(A):
     return CT_mean
 
 
-def aggregate_sims(a1, a2, a3, a4, a5, a6, a7):
+def aggregate_sims(a1, a2, a3, a4, a5, a6, a7, a8):
     import time
+
+    system_ind = int(a8)
+    systems = ["low_utilization", "high_utilization", "slow_server", "down_stream", "n_system", "parallel", "complete", "complete_reversed",  "complete_parallel" ]
+
+    system = systems[system_ind]
+    print(system)
+
     A = np.array([a1, a2, a3, a4, a5, a6, a7])
     cur_time = int(time.time())
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
@@ -69,13 +76,15 @@ def aggregate_sims(a1, a2, a3, a4, a5, a6, a7):
     #           12.85587584268216, 15.06492276522547,  15.000369983396416,   12.28529415912139,  14.23442144776856,
     #           11.399387500794504,  19.649579691039293,  17.004019925853694,  12.952197298510864, 12.752720812319906]
 
-    for ind in range(40):
-        res = simulate_competition(A)
+    for ind in range(100):
+        res = simulate_competition(A, system)
         print(res)
         tot_res.append(res)
 
+    file_num = np.random.randint(1, 10000)
+    file_name = system + '_' +str(file_num) + '_' +str(np.array(tot_res).mean()) +  '.pkl'
 
-
+    pkl.dump(tot_res, open(os.path.join('./results/', file_name), 'wb'))
         # pkl.dump(tot_res, open('run_500_res_simple_linear_high_utilisation3_' + str(model_num) + '.pkl', 'wb'))
 
     # print(res)

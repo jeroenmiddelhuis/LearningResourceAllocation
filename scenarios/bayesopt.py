@@ -30,6 +30,9 @@ from bayes_opt.util import load_logs
 def main():
 
     # Bounded region of parameter space
+    systems = ["low_utilization", "high_utilization", "slow_server", "down_stream", "n_system", "parallel", "complete", "complete_reversed",  "complete_parallel" ]
+
+    a8 = np.random.randint(len(systems))
 
     pbounds = {'a1': (0, 20),
                'a2': (0, 20),
@@ -37,7 +40,8 @@ def main():
                'a4': (0, 20),
                'a5': (0, 20),
                'a6': (0, 20),
-               'a7': (50, 550)}
+               'a7': (50, 550),
+               'a8': (a8, a8+0.0001)}
 
     optimizer = BayesianOptimization(
         f=aggregate_sims,
@@ -53,68 +57,6 @@ def main():
             )
 
     pkl.dump(optimizer, open('optimizier_complete.pkl', 'wb'))
-
-    # for ind in tqdm(range(2)):
-    #     if os.path.exists('./logs.json'):
-    #
-    #         load_logs(optimizer, logs=["./logs.json"]);
-    #         vals = [res for i, res in enumerate(optimizer.res)]
-    #         print(len(vals))
-    #         print('num_ites is 1')
-    #
-    #         print('Start optimizing')
-    #         optimizer.maximize(
-    #             init_points=0,
-    #             n_iter=1,
-    #         )
-    #
-    #         logger = JSONLogger(path="./logs.json")
-    #         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
-    #
-    #         load_logs(optimizer, logs=["./logs.json"]);
-    #         vals = [res for i, res in enumerate(optimizer.res)]
-    #         print(len(vals))
-    #
-    #     else:
-    #         print('num_ites is 7')
-    #         logger = JSONLogger(path="./logs.json")
-    #         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
-    #
-    #         print('Start optimizing')
-    #         optimizer.maximize(
-    #             init_points=2,
-    #             n_iter=5,
-    #         )
-    #
-    #
-    #     print('Finish')
-    #     vals = [res for i, res in enumerate(optimizer.res)]
-    #
-    #     pkl.dump(vals, open('res_complete_all.pkl', 'wb'))
-
-
-
-
-
-    # space = [Real(0, 20, name='a1'),
-    #          Real(0, 20, name='a2'),
-    #          Real(0, 20, name='a3'),
-    #          Real(0, 20, name='a4'),
-    #          Real(0, 20, name='a5'),
-    #          Real(0, 20, name='a6'),
-    #          Real(0, 20, name='a7')]
-    #
-    # res = gp_minimize(aggregate_sims,  # the function to minimize
-    #                   space,  # the bounds on each dimension of x
-    #                   acq_func="EI",  # the acquisition function
-    #                   n_calls=1,  # the number of evaluations of f
-    #                   n_random_starts=1,  # the number of random initialization points
-    #                   noise=0.1 ** 2,  # the noise level (optional)
-    #                   random_state=1234)
-
-
-    # model_num = np.random.randint(0, 100000)
-
 
 
 
