@@ -25,7 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skopt.plots import plot_gaussian_process
 from skopt import gp_minimize
-from bayes_opt.logger import JSONLogger
+# from bayes_opt.logger import JSONLogger
 from bayes_opt.event import Events
 from bayes_opt import BayesianOptimization
 from bayes_opt.util import load_logs
