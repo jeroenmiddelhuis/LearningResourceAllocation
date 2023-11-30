@@ -82,9 +82,9 @@ def aggregate_sims(a1, a2, a3, a4, a5, a6, a7, a8):
         tot_res.append(res)
 
     file_num = np.random.randint(1, 10000)
-    file_name = system + '_' +str(file_num) + '_' +str(np.array(tot_res).mean()) +  '.pkl'
+    file_name = system + '_' +str(file_num) + '_' +str(np.array(tot_res).mean()) +  'with_weights.pkl'
 
-    pkl.dump(tot_res, open(os.path.join('./results/', file_name), 'wb'))
+    pkl.dump((tot_res, (a1, a2, a3, a4, a5, a6, a7)), open(os.path.join('./results/', file_name), 'wb'))
         # pkl.dump(tot_res, open('run_500_res_simple_linear_high_utilisation3_' + str(model_num) + '.pkl', 'wb'))
 
     # print(res)
