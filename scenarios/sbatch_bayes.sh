@@ -3,6 +3,5 @@
 #SBATCH -A def-dkrass
 #SBATCH --mem 10000
 source /home/eliransc/projects/def-dkrass/eliransc/queues/bin/activate
-python /home/eliransc/projects/def-dkrass/eliransc/RNN_queue/rnn-lstm-gru/prepering_data_RNN.py
-
+python /home/eliransc/projects/def-dkrass/eliransc/LearningResourceAllocation/scenarios/bayesopt.py
 
