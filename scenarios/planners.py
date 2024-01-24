@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import List
 import pandas as pd
-#from sb3_contrib import MaskablePPO
+from sb3_contrib import MaskablePPO
 
 
 class Planner(ABC):
@@ -370,8 +370,9 @@ class PPOPlanner(Planner):
     def __str__(self) -> str:
         return 'PPOPlanner'
 
-    def __init__(self, model_name) -> None:
+    def __init__(self, model_name, check_interval) -> None:
         self.model = MaskablePPO.load(f'{model_name}')
+        self.check_interval = check_interval
         self.resources = None
         self.task_types = None
         self.inputs = None
@@ -385,6 +386,14 @@ class PPOPlanner(Planner):
     def linkSimulator(self, simulator):
         self.simulator = simulator
 
+    def get_possible_assignments(self, available_tasks, available_resources, resource_pools):
+        possible_assignments = []
+        for task_type in set(task.task_type for task in available_tasks):
+            for resource in available_resources:
+                if resource in resource_pools[task_type]:
+                    possible_assignments.append((resource, task_type))
+        return list(set(possible_assignments))
+
     def define_action_masks(self, state) -> List[bool]:
         #state = self.simulator.get_state()
         mask = [0 for _ in range(len(self.simulator.output))]
@@ -395,7 +404,13 @@ class PPOPlanner(Planner):
                     if state[self.simulator.input.index(resource + '_availability')] > 0:
                         mask[self.simulator.output.index((resource, task_type))] = 1
 
-        mask[-1] = 1 # Set postpone action to 1
+        if self.check_interval != None:
+            if sum(mask) > 0:
+                mask[-2] = 1 # Set postpone action to 1
+            else:
+                mask[-1] = 1 # Fake transtition
+        else:
+            mask[-2] = 1
 
         return list(map(bool, mask))
 
@@ -404,8 +419,11 @@ class PPOPlanner(Planner):
 
 
 
-    def plan(self, available_resources, unassigned_tasks, resource_pool):
+    def plan(self, available_resources, unassigned_tasks, resource_pools):
+        #if len(self.get_possible_assignments(self, available_resources, unassigned_tasks, resource_pools)) == 0:
         state = self.simulator.get_state()
+        #print(self.simulator.now)
+        
         #print(state)
         #mask = self.define_action_masks(state)        
         
@@ -421,7 +439,7 @@ class PPOPlanner(Planner):
             #task, resource = self.take_action(action)
             #print(action)
 
-            if assignment != 'Postpone': # Not postpone
+            if assignment != 'Postpone' and assignment != 'Wait':
                 #print(f"AVAILABLE RESOURCES: {available_resources}")
                 #print(f"UNASSIGNED TASKS: {unassigned_tasks}")
                 #print(f"NUMBER OF POSSIBLE ASSIGNMENTS: {sum(self.getActionMasks(self.getState(available_resources, unassigned_tasks, busy_resources))) - 1}")

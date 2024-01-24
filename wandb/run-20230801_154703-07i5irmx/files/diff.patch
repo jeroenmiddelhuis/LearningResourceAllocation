@@ -1,0 +1,833 @@
+diff --git a/scenarios/.gitignore b/scenarios/.gitignore
+index 914c687..5f49b71 100644
+--- a/scenarios/.gitignore
++++ b/scenarios/.gitignore
+@@ -2,4 +2,5 @@ __pycache__/
+ env/
+ results/
+ test/
+-tmp/
+\ No newline at end of file
++tmp/
++wandb/
+\ No newline at end of file
+diff --git a/scenarios/__main__.py b/scenarios/__main__.py
+index a5e413a..835cf15 100644
+--- a/scenarios/__main__.py
++++ b/scenarios/__main__.py
+@@ -1,13 +1,13 @@
+ from simulator import Simulator
+-from planners import GreedyPlanner, ShortestProcessingTime, FIFO, Random
++from planners import GreedyPlanner, ShortestProcessingTime, FIFO, Random, PPOPlanner
+ from time import time
+ import numpy as np
+ import os
+ import sys
+ 
+ 
+-running_time = 5000
+-write = True
++running_time = 20000
++write = False
+ # Original main
+ def simulate_competition(model_name):
+     results = []
+@@ -19,11 +19,11 @@ def simulate_competition(model_name):
+         if i % 5 == 0:
+             print(i)
+         #planner = DedicatedResourcePlanner()
+-        #planner = ShortestProcessingTime()
+-        planner = FIFO()
++        # planner = ShortestProcessingTime()
++        #planner = FIFO()
+         #planner = Random()       
+ 
+-        #planner = PPOPlanner(os.getcwd() + "\\scenarios\\tmp\\" + f"{model_name}_30000000_2048" + "\\best_model.zip")
++        planner = PPOPlanner(os.getcwd() + "\\scenarios\\tmp\\" + f"{model_name}_30000000_2048" + "\\best_model.zip")
+                              
+         if write == False:
+             log_dir = None
+diff --git a/scenarios/bpo_env.py b/scenarios/bpo_env.py
+index 1bc21d9..ac529ce 100644
+--- a/scenarios/bpo_env.py
++++ b/scenarios/bpo_env.py
+@@ -1,5 +1,5 @@
+-import gym
+-from gym import spaces, Env
++import gymnasium as gym
++from gymnasium import spaces, Env
+ import random
+ import numpy as np
+ from typing import List
+@@ -7,25 +7,31 @@ from typing import List
+ from simulator import Simulator
+ 
+ class BPOEnv(Env):
+-    def __init__(self, running_time, config_type, reward_function=None, write_to=None, cv=0.25) -> None:
++    def __init__(self, running_time, config_type, reward_function=None, check_interval=None, write_to=None, interval_mode=False) -> None:
+         super().__init__()
+         self.num_envs = 1
+         self.running_time = running_time
+         self.counter = 0
+         self.nr_bad_assignments = 0
+         self.nr_postpone = 0
++        self.nr_fake_transitions = 0
+         self.config_type = config_type
+         self.reward_function = reward_function
++        self.check_interval = check_interval
+         self.write_to = write_to
+-        self.cv = cv
++        self.interval_mode = interval_mode
+         self.action_number = [0, 0, 0]
+         self.action_time = [0, 0, 0]
+         self.step_print = False
+         self.last_reward = 0
+         self.additional_rewards = 0
+         self.previous_reward_time = 0
++        self.t_now = 0
++        self.reward_intervals = []
+ 
+-        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to, cv=self.cv)
++        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type,
++                                   reward_function=self.reward_function, check_interval=self.check_interval,
++                                   interval_mode=self.interval_mode, write_to=self.write_to)
+ 
+         #define lows and highs for different sections of the input
+         lows = np.array([0 for x in range(len(self.simulator.input))])
+@@ -49,8 +55,8 @@ class BPOEnv(Env):
+         # spaces.Discrete returns a number between 0 and len(self.simulator.output)
+         self.action_space = spaces.Discrete(len(self.simulator.output)) #action space is the cartesian product of tasks and resources in their resource pool
+ 
+-        while (sum(self.define_action_masks()) <= 1):
+-            self.simulator.run() # Run the simulator to get to the first decision
++        #while (sum(self.define_action_masks()) <= 1):
++        self.simulator.run() # Run the simulator to get to the first decision
+ 
+ 
+     def step(self, action):
+@@ -58,15 +64,17 @@ class BPOEnv(Env):
+         if self.step_print: print('Time:\t', self.simulator.now)
+         if self.step_print: print('State:\t', self.simulator.get_state())
+         self.counter += 1
+-        if action == 2:
+-            self.nr_bad_assignments += 1
+-        elif action == len(self.simulator.output)-1:
++
++        if action == len(self.simulator.output) - 2:
+             self.nr_postpone += 1
++        if action == len(self.simulator.output) - 1:
++            self.nr_fake_transitions += 1
+ 
+-        print_every = 500
++        print_every = 5000
+         if self.counter % print_every == 0:
+-            print(f'nr of postpones: {self.nr_postpone}/{print_every}')
+-            self.nr_bad_assignments = 0
++            print(f'Nr of postpones: {self.nr_postpone}/{print_every}')
++            print(f'Nr of fake transitions: {self.nr_fake_transitions}/{print_every}')
++            self.nr_fake_transitions = 0
+             self.nr_postpone = 0
+             state = self.simulator.get_state()
+             print(state, '\n')
+@@ -86,12 +94,12 @@ class BPOEnv(Env):
+             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
+         """
+ 
+-
+         # 1 Process action
+         # 2 Do the timestep
+         # 3 Return reward
+         # Assign one resources per iteration. If possible, another is assigned in next step without advancing simulator
+         assignment = self.simulator.output[action] # (Task X, Resource Y)
++        #print('Before:',self.simulator.get_state(), self.define_action_masks(), assignment, self.simulator.now)
+         # state = self.simulator.get_state()
+         # if assignment == 'Postpone':
+         #     if state[0] > 0 and state[1] > 0:
+@@ -100,45 +108,63 @@ class BPOEnv(Env):
+         #         self.simulator.current_reward -= 50
+         #print(assignment, self.simulator.get_state(), self.action_masks(), self.simulator.output)
+         #print('Moment of decisions: ', self.simulator.now, '. Action:', assignment, self.simulator.get_state())
+-        unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types[:-1]] # sum of unassigned tasks per type
++        #shortened_state = [np.round(i, 2) if n in [5, 6] else i for n, i in enumerate(self.simulator.get_state())]
++        #print(f'Action at t={t_now}. -- Nr cases: {len(self.simulator.uncompleted_cases)}. -- State: {shortened_state}. -- Action: {assignment}.')
++
++        # unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types[:-1]] # sum of unassigned tasks per type
+ 
+-        available_resources = [resource for resource in self.simulator.available_resources]
++        # available_resources = [resource for resource in self.simulator.available_resources]
+ 
+         #print(self.simulator.now, '\t', unassigned_tasks, '\t', available_resources, '\t', assignment, '\t', reward)
+ 
+ 
+         if self.step_print: print('Action:\t', assignment)
+-        if assignment != 'Postpone':
++        if assignment != 'Postpone' and assignment != 'Wait':
+             if self.simulator.planner == None:
+                 assignment = (assignment[0], (next((x for x in self.simulator.available_tasks if x.task_type == assignment[1]), None)))
+             #print('stuck 1', assignment, self.simulator.now)
+             self.simulator.process_assignment(assignment)
+-
++            #print('After:',self.simulator.get_state(), self.define_action_masks(), (assignment[0], assignment[1].task_type), self.simulator.now, '\n')
+             #print('Before action: ', self.simulator.now)
+             # While assignment not possible and simulator not finished (postpone always possible)
+-            while (sum(self.define_action_masks()) <= 1) and (self.simulator.status != 'FINISHED'):
+-                #print('ASSIGNED', self.simulator.now)
+-                self.simulator.run() # breaks each time at resource assignment, continues if no assignment possible
+-            #print('After action: ', self.simulator.now)
+-        else: # Postpone action
+-            unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] # sum of unassigned tasks per type
+ 
+-            available_resources = [resource for resource in self.simulator.available_resources]
++        #     while self.simulator.fake_transition == False\
++        #         and ((sum(self.define_action_masks()) <= 1) and (self.simulator.status != 'FINISHED')):
++        #         #print('ASSIGNED', self.simulator.now)
++        #         self.simulator.run() # breaks each time at resource assignment, continues if no assignment possible
++        #     #print('After action: ', self.simulator.now)
++        # else: # Postpone action or fake transition
++        #     unassigned_tasks = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] # sum of unassigned tasks per type
++
++        #     available_resources = [resource for resource in self.simulator.available_resources]
+ 
+-            #print('Before postpone: ', self.simulator.now)
+-            while (self.simulator.status != 'FINISHED') and ((sum(self.define_action_masks()) <= 1) or (unassigned_tasks == [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] and \
++        #     #print('Before postpone: ', self.simulator.now)
++        #     while self.simulator.fake_transition == False\
++        #             and (self.simulator.status != 'FINISHED')\
++        #             and ((sum(self.define_action_masks()) <= 1)\
++        #             or (unassigned_tasks == [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types]\
++        #             and available_resources == [resource for resource in self.simulator.available_resources])):
+ 
+-                    available_resources == [resource for resource in self.simulator.available_resources])):
++        self.simulator.run()
+ 
+-                self.simulator.run()
++        
+             # Penatly for postponing
+-            postpone_penalty = -0.001#-0.001 * len(self.simulator.available_tasks) #.05#-0.005
+-            self.simulator.current_reward += postpone_penalty
+-            self.simulator.total_reward += postpone_penalty
++            # postpone_penalty = -0.001#-0.001 * len(self.simulator.available_tasks) #.05#-0.005
++            # self.simulator.current_reward += postpone_penalty
++            # self.simulator.total_reward += postpone_penalty
+             #print('After postpone: ', self.simulator.now)
+ 
++        #if self.simulator.now - self.t_now > self.fake_transition_interval:
++        #    print('MORE THAN 0.5!!', self.simulator.now, self.t_now)
++        self.reward_intervals.append(self.simulator.now - self.t_now)
++
+ 
++        # if self.simulator.now - self.t_now > self.check_interval:
++        #     print('More than. Sim time', self.simulator.now, 'prev time', self.t_now)
++        # elif self.simulator.now - self.t_now < self.check_interval:
++        #     print('Less than. Sim time', self.simulator.now, 'prev time', self.t_now)
+ 
++        self.t_now = self.simulator.now
+         reward = self.simulator.current_reward
+         # if reward > 0:
+         #     reward = reward / (1 + (self.simulator.now-self.previous_reward_time))
+@@ -180,16 +206,17 @@ class BPOEnv(Env):
+             # print(f'running: {self.simulator.running_time}, last_moment: {self.simulator.last_reward_moment}')
+             # current_reward = (self.simulator.running_time - self.simulator.last_reward_moment) * len(self.simulator.uncompleted_cases)
+             if self.simulator.reward_function == 'AUC':
+-                    current_reward = (self.simulator.now - self.simulator.last_reward_moment) * len(self.simulator.uncompleted_cases)
+-                    self.simulator.current_reward -= current_reward
+-                    self.simulator.total_reward -= current_reward
+-                    self.simulator.last_reward_moment = self.simulator.now
++                current_reward = (self.simulator.now - self.simulator.last_reward_moment) * len(self.simulator.uncompleted_cases)
++                self.simulator.current_reward -= current_reward
++                self.simulator.total_reward -= current_reward
++                self.simulator.last_reward_moment = self.simulator.now
+             # self.simulator.last_reward_moment = self.simulator.running_time
+ 
+             # reward = self.simulator.current_reward
+             # self.simulator.current_reward = 0
+             # print('FINAL REWARD', current_reward)
+-            return self.simulator.get_state(), reward, True, {}
++            print('mean', np.mean(self.reward_intervals), 'min', min(self.reward_intervals), 'max', max(self.reward_intervals))
++            return self.simulator.get_state(), reward, True, {}, {}
+         else:
+             # current_reward = (self.simulator.now - self.simulator.last_reward_moment) * len(self.simulator.uncompleted_cases)
+             # self.simulator.current_reward -= current_reward
+@@ -198,10 +225,13 @@ class BPOEnv(Env):
+ 
+             # reward = self.simulator.current_reward
+             # self.simulator.current_reward = 0
+-            return self.simulator.get_state(), reward, False, {}
++            # shortened_state = [np.round(i, 2) if n in [5, 6] else i for n, i in enumerate(self.simulator.get_state())]
++            # print(f'Reward at t={self.simulator.now} after {self.simulator.now - t_now} time untis. -- Nr cases: {len(self.simulator.uncompleted_cases)}. -- State: {shortened_state}. -- Reward: {reward}. \n')
+ 
++            return self.simulator.get_state(), reward, False, {}, {}
+ 
+-    def reset(self):
++
++    def reset(self, seed: int | None = None):
+         """Resets the environment to an initial state and returns an initial
+         observation.
+ 
+@@ -216,13 +246,16 @@ class BPOEnv(Env):
+         """
+ 
+         print("-------Resetting environment-------")
++        self.__init__(self.running_time, self.config_type, reward_function=self.reward_function, 
++                      check_interval=self.check_interval, write_to=self.reward_function,
++            	      interval_mode=self.interval_mode)
+ 
+-        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to, cv=self.cv)
+-        while (sum(self.define_action_masks()) <= 1):
+-            self.simulator.run() # Run the simulator to get to the first decision
++        # self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to)
++        # while (sum(self.define_action_masks()) <= 1):
++        #     self.simulator.run() # Run the simulator to get to the first decision
+ 
+         #self.finished = False
+-        return self.simulator.get_state()
++        return self.simulator.get_state(), {}
+ 
+ 
+     def render(self, mode='human', close=False):
+@@ -239,7 +272,10 @@ class BPOEnv(Env):
+                     if state[self.simulator.input.index(resource + '_availability')] > 0:
+                         mask[self.simulator.output.index((resource, task_type))] = 1
+ 
+-        mask[-1] = 1 # Set postpone action to 1
++        if sum(mask) > 0:
++            mask[-2] = 1 # Set postpone action to 1
++        else:
++            mask[-1] = 1 # Fake transtition
+ 
+         return list(map(bool, mask))
+ 
+diff --git a/scenarios/config.txt b/scenarios/config.txt
+index 5e90149..283b390 100644
+--- a/scenarios/config.txt
++++ b/scenarios/config.txt
+@@ -47,9 +47,9 @@
+ "n_system" :       {"mean_interarrival_time"  : 2,
+                     "task_types"              : ["Start", "Task I", "Task J"],
+                     "resources"               : ["Resource 9", "Resource 10"],
+-                    "resource_pools"          : {"Task I": {"Resource 9":[3.0, 1]},                                                            
+-                                                 "Task J": {"Resource 9":[2.0, 1],
+-                                                            "Resource 10":[2.4, 1]}},
++                    "resource_pools"          : {"Task I": {"Resource 10":[2.4, 1]},                                                            
++                                                 "Task J": {"Resource 9":[3.0, 1],
++                                                            "Resource 10":[2.0, 1]}},
+                     "transitions"             : {"Start" : [0, 0.5, 0.5, 0],
+                                                  "Task I": [0, 0, 0, 1],
+                                                  "Task J": [0, 0, 0, 1]}},                                                 
+diff --git a/scenarios/evaluation.ipynb b/scenarios/evaluation.ipynb
+index 1168d70..326c381 100644
+--- a/scenarios/evaluation.ipynb
++++ b/scenarios/evaluation.ipynb
+@@ -2,7 +2,7 @@
+  "cells": [
+   {
+    "cell_type": "code",
+-   "execution_count": 2,
++   "execution_count": 4,
+    "metadata": {},
+    "outputs": [],
+    "source": [
+@@ -13,7 +13,7 @@
+   },
+   {
+    "cell_type": "code",
+-   "execution_count": 3,
++   "execution_count": 5,
+    "metadata": {},
+    "outputs": [],
+    "source": [
+@@ -22,12 +22,12 @@
+   },
+   {
+    "cell_type": "code",
+-   "execution_count": 4,
++   "execution_count": 6,
+    "metadata": {},
+    "outputs": [
+     {
+      "data": {
+-      "image/png": "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",
++      "image/png": "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/QrAgNfcfVGMyxIRkTKY6wOvTplZqsPaE9r1LRURKZ2ZZUavK6g8LSeKiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQqya5OXlMWbMGLp3706PHj149913i213d37xi1/QtWtXkpOTWbduXeG2wYMH07JlS4YPH15sn/79+xOJRIhEIpx11lmMHDkSgJUrV9KiRYvCbQ888EDhPpMnTyYhIYGkpKTqm6yISIzo78SqyW233cbgwYNZsGABP/74IwcPHiy2fcmSJWzfvp3t27ezZs0abr75ZtasWQPA9OnTOXjwIH/961+L7bN69erC59deey0jRowofN2/f39effXVE+qYNGkSt956KxMmTKjK6YmI1Ao6E6sGe/fuZdWqVdxwww0ANGzYkJYtWxbrs2jRIiZMmICZkZaWRl5eHjk5OQAMHDiQ5s2blzr+vn37WL58eeGZ2MkMGDCA1q1bn/JcRERqM4VYNfjss89o164d119/PRdddBFTpkzhwIEDxfp89dVXnH322YWvExMT+eqrr8o1/sKFCxk4cCBnnHFGYdu7777LhRdeyJAhQ/jwww+rZiIiIrWcQqwaHDlyhHXr1nHzzTfzwQcf0KxZMx588MEqG3/u3LmMGzeu8PXFF1/MF198wfr16/n5z39erjM0EZG6QCFWDRITE0lMTKRv374AjBkzptiFGwAdO3Zkx44dha+zs7Pp2LFjmWPn5uaSkZHBsGHDCtvOOOMM4uPjARg6dCj5+fnk5uZWxVRERGo1hVg1aN++PWeffTZbt24F4M0336Rnz57F+lxzzTW88MILuDvvvfceLVq0oEOHDmWOvWDBAoYPH07jxo0L27755hsK7oGZkZHBsWPHaNOmTRXOSESkdtLVidXkz3/+M+PHj+fHH3+kS5cuPPfcczz55JMA3HTTTQwdOpTXX3+drl270rRpU5577rnCffv378+WLVv4/vvvSUxMZNasWVx99dUAzJs3j7vuuqvYey1YsIAnnniCuLg4mjRpwrx587DgI6bHjRvHypUryc3NJTExkRkzZhRecCIiEna6i30l6C72IiIVp7vYi4iIoBATEZEQU4iJiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQkxEREJLISYiIqGlEBMRkdBSiImISGgpxCohJSV6n8TjHyIiUjMUYiIiEloKMRERCS2F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ffOCOYuISC1lXkOXzwVXJ95REDJVNOYkINXdb62qMSv2/qkOJ5+Ork4UESnOzDKjF8dVnu7YISIioVXlf6RsZo8D/+245pnufkVVv5e7zya6rCgiIvVQlYeYu99S1WOKiIiURMuJIiISWgoxEREJLYVYDZk5cyZJSUn06tWLP/3pTyX2WblyJZFIhF69enH55ZcX23b06FEuuugihg8fXtg2adIkOnfuTCQSIRKJkJWVBcCcOXNITk6md+/eXHrppaxfv77MsUREwqim7j5fr23atImnn36ajIwMGjZsyODBgxk+fDhdu3Yt7JOXl8e0adNYunQp55xzDt9++22xMWbOnEmPHj3Yt29fsfZHHnmEMWPGFGvr3Lkzb731Fq1atWLJkiVMnTqVNWvWlDmWiEjY6EysBmzevJm+ffvStGlT4uLiuPzyy3n55ZeL9fn73//O6NGjOeeccwBISEgo3Jadnc1rr73GlClTyvV+l156Ka1atQIgLS2N7OzsUx5LRKQ2U4jVgKSkJFavXs3u3bs5ePAgr7/+Ojt27CjWZ9u2bezZs4crrriClJQUXnjhhcJtt99+Ow8//DCnnXbi4br77rtJTk7ml7/8JYcPHz5h+6xZsxgyZEi5xhIRCRstJ9aAHj16cOeddzJo0CCaNWtGJBKhQYMGxfocOXKEzMxM3nzzTQ4dOkS/fv1IS0tj27ZtJCQkkJKSwsqVK4vt8/vf/5727dvz448/MnXqVB566CHuvffewu0rVqxg1qxZvP322wC8+uqrpY4lIhJG+t/xGnLDDTeQmZnJqlWraNWqFd26dSu2PTExkauvvppmzZrRtm1bBgwYwPr163nnnXdYvHgxnTp1YuzYsSxfvpyf/exnAHTo0AEzo1GjRlx//fVkZGQUjrdhwwamTJnCokWLaNOmDcBJxxIRCSV31+MUH5Di0bsjlv4osHPnTnd3/+KLL/yCCy7wPXv2eFEfffSRX3XVVZ6fn+8HDhzwXr16+caNG4v1WbFihQ8bNqzw9ddff+3u7seOHfPbbrvN77zzzsL3OO+88/ydd97x0hw/lohITQHWehX9HNZyYg259tpr2b17N6effjqPP/44LVu25MknnwTgpptuokePHgwePJjk5GROO+00pkyZQlJS0knHHD9+PLt27cLdiUQiheM98MAD7N69m2nTpgEQFxfH2rVV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",
+       "text/plain": [
+        "<Figure size 432x288 with 1 Axes>"
+       ]
+@@ -44,7 +44,7 @@
+       "ppo 9.6 (0.42)\n",
+       "svfa 9.0 (0.26)\n",
+       "spt 12.4 (0.71)\n",
+-      "fifo 8.7 (0.33)\n",
++      "fifo 6.0 (0.11)\n",
+       "random 10.7 (0.45)\n"
+      ]
+     },
+@@ -272,12 +272,12 @@
+   },
+   {
+    "cell_type": "code",
+-   "execution_count": 5,
++   "execution_count": 7,
+    "metadata": {},
+    "outputs": [
+     {
+      "data": {
+-      "image/png": "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",
++      "image/png": "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/QrAgNfcfVGMyxIRkTKY6wOvTplZqsPaE9r1LRURKZ2ZZUavK6g8LSeKiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQqya5OXlMWbMGLp3706PHj149913i213d37xi1/QtWtXkpOTWbduXeG2wYMH07JlS4YPH15sn/79+xOJRIhEIpx11lmMHDkSgJUrV9KiRYvCbQ888EDhPpMnTyYhIYGkpKTqm6yISIzo78SqyW233cbgwYNZsGABP/74IwcPHiy2fcmSJWzfvp3t27ezZs0abr75ZtasWQPA9OnTOXjwIH/961+L7bN69erC59deey0jRowofN2/f39effXVE+qYNGkSt956KxMmTKjK6YmI1Ao6E6sGe/fuZdWqVdxwww0ANGzYkJYtWxbrs2jRIiZMmICZkZaWRl5eHjk5OQAMHDiQ5s2blzr+vn37WL58eeGZ2MkMGDCA1q1bn/JcRERqM4VYNfjss89o164d119/PRdddBFTpkzhwIEDxfp89dVXnH322YWvExMT+eqrr8o1/sKFCxk4cCBnnHFGYdu7777LhRdeyJAhQ/jwww+rZiIiIrWcQqwaHDlyhHXr1nHzzTfzwQcf0KxZMx588MEqG3/u3LmMGzeu8PXFF1/MF198wfr16/n5z39erjM0EZG6QCFWDRITE0lMTKRv374AjBkzptiFGwAdO3Zkx44dha+zs7Pp2LFjmWPn5uaSkZHBsGHDCtvOOOMM4uPjARg6dCj5+fnk5uZWxVRERGo1hVg1aN++PWeffTZbt24F4M0336Rnz57F+lxzzTW88MILuDvvvfceLVq0oEOHDmWOvWDBAoYPH07jxo0L27755hsK7oGZkZHBsWPHaNOmTRXOSESkdtLVidXkz3/+M+PHj+fHH3+kS5cuPPfcczz55JMA3HTTTQwdOpTXX3+drl270rRpU5577rnCffv378+WLVv4/vvvSUxMZNasWVx99dUAzJs3j7vuuqvYey1YsIAnnniCuLg4mjRpwrx587DgI6bHjRvHypUryc3NJTExkRkzZhRecCIiEna6i30l6C72IiIVp7vYi4iIoBATEZEQU4iJiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQkxEREJLISYiIqGlEBMRkdBSiImISGgpxCohJSV6n8TjHyIiUjMUYiIiEloKMRERCS2F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ffOCOYuISC1lXkOXzwVXJ95REDJVNOYkINXdb62qMSv2/qkOJ5+Ork4UESnOzDKjF8dVnu7YISIioVXlf6RsZo8D/+245pnufkVVv5e7zya6rCgiIvVQlYeYu99S1WOKiIiURMuJIiISWgoxEREJLYVYDZk5cyZJSUn06tWLP/3pTyX2WblyJZFIhF69enH55ZcX23b06FEuuugihg8fXtg2adIkOnfuTCQSIRKJkJWVBcCcOXNITk6md+/eXHrppaxfv77MsUREwqim7j5fr23atImnn36ajIwMGjZsyODBgxk+fDhdu3Yt7JOXl8e0adNYunQp55xzDt9++22xMWbOnEmPHj3Yt29fsfZHHnmEMWPGFGvr3Lkzb731Fq1atWLJkiVMnTqVNWvWlDmWiEjY6EysBmzevJm+ffvStGlT4uLiuPzyy3n55ZeL9fn73//O6NGjOeeccwBISEgo3Jadnc1rr73GlClTyvV+l156Ka1atQIgLS2N7OzsUx5LRKQ2U4jVgKSkJFavXs3u3bs5ePAgr7/+Ojt27CjWZ9u2bezZs4crrriClJQUXnjhhcJtt99+Ow8//DCnnXbi4br77rtJTk7ml7/8JYcPHz5h+6xZsxgyZEi5xhIRCRstJ9aAHj16cOeddzJo0CCaNWtGJBKhQYMGxfocOXKEzMxM3nzzTQ4dOkS/fv1IS0tj27ZtJCQkkJKSwsqVK4vt8/vf/5727dvz448/MnXqVB566CHuvffewu0rVqxg1qxZvP322wC8+uqrpY4lIhJG+t/xGnLDDTeQmZnJqlWraNWqFd26dSu2PTExkauvvppmzZrRtm1bBgwYwPr163nnnXdYvHgxnTp1YuzYsSxfvpyf/exnAHTo0AEzo1GjRlx//fVkZGQUjrdhwwamTJnCokWLaNOmDcBJxxIRCSV31+MUH5Di0bsjlv4osHPnTnd3/+KLL/yCCy7wPXv2eFEfffSRX3XVVZ6fn+8HDhzwXr16+caNG4v1WbFihQ8bNqzw9ddff+3u7seOHfPbbrvN77zzzsL3OO+88/ydd97x0hw/lohITQHWehX9HNZyYg259tpr2b17N6effjqPP/44LVu25MknnwTgpptuokePHgwePJjk5GROO+00pkyZQlJS0knHHD9+PLt27cLdiUQiheM98MAD7N69m2nTpgEQFxfH2rVVdt9lEZFao8buYl8X6S72IiIVp7vYi4iIoBATEZEQU4iJiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQkxEREJLISYiIqGlEBMRkdBSiFVCSkpZt/+NdYUiInWbQkxEREJLISYiIqGlEBMRkdBSiImISGgpxEREJLQUYiIiEloKMRERCa16HWJmdr+Z3VHedhERqV3qdYiVxMziYl2DiIiUT737gW1mdwMTgW+BHUCmma0EsoDLgLkxK05ERCqkXoWYmaUAY4EI0bmvAzKDzQ3dPTXod/9JxpgKTI2+OgezaitXRKRWqk231Ktvy4n9gVfc/aC77wMWF9k2vzwDuPtT7p4aDbx21VKkiIiUT30LsZM5EOsCRESkYupbiK0CRppZEzNrDvxrrAsSEZFTV69+J+bu68xsPrCe6IUd78e4JBERqQTz2vQbupAxS3VYG+syRERqVGVjw8wyCy6kq6z6tpwoIiJ1iEJMRERCSyEmIiKhpRATEZHQUoiJiEhoKcRERKRCfvjhBy655BIuvPBCevXqxX333QfA+PHjueCCC0hKSmLy5Mnk5+cDMGfOHJKTk+nduzeXXnopQJOSxjWzOWa21cw2mdmzZnZ6WbUoxEREpEIaNWrE8uXLWb9+PVlZWSxdupT33nuP8ePHs2XLFjZu3MihQ4d45plnAOjcuTNvvfUWGzdu5J577gE4t5Sh5wDdgd5Eg25KWbXUqz92FhGRyjMz4uPjAcjPzyc/Px8zY+jQoYV9LrnkErKzswEKzr4ASEtLA2hY0rju/nqR98gAEsuqRWdiIiJSYUePHiUSiZCQkEB6ejp9+/Yt3Jafn8+LL77I4MGDT9hv1qxZAHtPNnawjPjfgaVl1aEQExGRCmvQoAFZWVlkZ2eTkZHBpk2bCrdNmzaNAQMG0L9//2L7rFixoiDEsssY/i/AKndfXVYdCjERETllLVu25Morr2Tp0uhJ04wZM9i1axd//OMfi/XbsGEDU6ZMYdGiRQBHSxvPzO4j+jlXvyrP+yvERESkQnbt2kVeXh4Ahw4d4o033qB79+4888wz/OMf/2Du3Lmcdto/4+XLL79k9OjRvPjii3Tr1q3Ucc1sCnA1MM7dj5WnFl3YISIiFZKTk8PEiRM5evQox44d47rrrmP48OHExcVx7rnn0q9fPwBGjx7NvffeywMPPMDu3buZNm1awRA9Cp6Y2evAFHf/GngS+AJ418wAXnb3B05Wi+5iXwm6i72I1Ee6i72IiEgVUIiJiEhoKcRERCS0FGIiIhJaCjEREQkthZiIiISWQkxEREJLISYiIqGlEBMRkdBSiImISGgpxEREJLR0A+BKSEmBtbp1oohIzOhMTEREQkshJiIioaUQExGR0FKIiYhIaCnEREQktBRiIiISWgoxEREJLYWYiIiElkJMRERCy9w91jWElpntB7bGuo5KagvkxrqIKlAX5lEX5gB1Yx51YQ5Qe+dxrru3q4qBdNupytnq7qmxLqIyzGxt2OcAdWMedWEOUDfmURfmAHVnHiej5UQREQkthZiIiISWQqxynop1AVWgLswB6sY86sIcoG7Moy7MAerOPEqlCztERCS0dCYmIiKhpRATEZHQUoidAjMbbGZbzexjM7sr1vVUhJl9bmYbzSzLzNYGba3N7A0z2x58bRXrOosys2fN7Fsz21SkrcSaLeqx4NhsMLOLY1d5caXM434z+yo4HllmNrTItv8ZzGOrmV0dm6qLM7OzzWyFmX1kZh+a2W1Be2iOx0nmELZj0djMMsxsfTCPGUF7ZzNbE9Q738waBu2NgtcfB9s7xXQCVcXd9ajAA2gAfAJ0ARoC64Gesa6rAvV/DrQ9ru1h4K7g+V3AQ7Gu87j6BgAXA5vKqhkYCiwBDEgD1sS6/jLmcT9wRwl9ewb/thoBnYN/cw1qwRw6ABcHz5sD24JaQ3M8TjKHsB0LA+KD56cDa4Lv8f8BxgbtTwI3B8+nAU8Gz8cC82M9h6p46Eys4i4BPnb3T939R2AeMCLGNVXWCOD54PnzwMjYlXIid18FfHdcc2k1jwBe8Kj3gJZm1qFGCi1DKfMozQhgnrsfdvfPgI+J/tuLKXfPcfd1wfP9wGagIyE6HieZQ2lq67Fwd/8+eHl68HDgKmBB0H78sSg4RguAgWZmNVNt9VGIVVxHYEeR19mc/D+A2saBZWaWaWZTg7Yz3T0neP4NcGZsSquQ0moO4/G5NVhqe7bIUm6tn0ewHHUR0TOAUB6P4+YAITsWZtbAzLKAb4E3iJ4l5rn7kaBL0VoL5xFs3wu0qdGCq4FCrP65zN0vBoYAt5jZgKIbPbrWEKq/uwhjzUU8AZwHRIAc4A8xraaczCweeAm43d33Fd0WluNRwhxCdyzc/ai7R4BEomeH3WNbUc1TiFXcV8DZRV4nBm2h4O5fBV+/BV4h+g9/Z8EST/D129hVWG6l1Ryq4+PuO4MfRMeAp/nnMlWtnYeZnU70h/8cd385aA7V8ShpDmE8FgXcPQ9YAfQjumRbcF/corUWziPY3gLYXbOVVj2FWMW9D5wfXAHUkOgvSBfHuKZyMbNmZta84DkwCNhEtP6JQbeJwKLYVFghpdW8GJgQXBWXBuwtssxV6xz3+6FRRI8HROcxNriirDNwPpBR0/UdL/gdyixgs7v/scim0ByP0uYQwmPRzsxaBs+bAOlEf7+3AhgTdDv+WBQcozHA8uCsOdxifWVJGB9Er7jaRnT9+e5Y11OBursQvcpqPfBhQe1E18XfBLYD/wW0jnWtx9U9l+jyTj7RNf4bSquZ6BVbjwfHZiOQGuv6y5jHi0GdG4j+kOlQpP/dwTy2AkNiXX9Q02VElwo3AFnBY2iYjsdJ5hC2Y5EMfBDUuwm4N2jvQjRkPwb+E2gUtDcOXn8cbO8S6zlUxUO3nRIRkdDScqKIiISWQkxEREJLISYiIqGlEBMRkdBSiImISGgpxEREJLQUYiIiElr/HxUVjD+lvgjZAAAAAElFTkSuQmCC",
+       "text/plain": [
+        "<Figure size 432x288 with 1 Axes>"
+       ]
+@@ -413,6 +413,14 @@
+    "execution_count": 8,
+    "metadata": {},
+    "outputs": [
++    {
++     "name": "stderr",
++     "output_type": "stream",
++     "text": [
++      "c:\\Users\\s144763\\Anaconda3\\envs\\drl_env\\lib\\site-packages\\scipy\\__init__.py:146: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.23.5\n",
++      "  warnings.warn(f\"A NumPy version >={np_minversion} and <{np_maxversion}\"\n"
++     ]
++    },
+     {
+      "data": {
+       "text/plain": [
+diff --git a/scenarios/planners.py b/scenarios/planners.py
+index a39574e..8aca43c 100644
+--- a/scenarios/planners.py
++++ b/scenarios/planners.py
+@@ -385,6 +385,14 @@ class PPOPlanner(Planner):
+     def linkSimulator(self, simulator):
+         self.simulator = simulator
+ 
++    def get_possible_assignments(self, available_tasks, available_resources, resource_pools):
++        possible_assignments = []
++        for task_type in set(task.task_type for task in available_tasks):
++            for resource in available_resources:
++                if resource in resource_pools[task_type]:
++                    possible_assignments.append((resource, task_type))
++        return list(set(possible_assignments))
++
+     def define_action_masks(self, state) -> List[bool]:
+         #state = self.simulator.get_state()
+         mask = [0 for _ in range(len(self.simulator.output))]
+@@ -395,7 +403,10 @@ class PPOPlanner(Planner):
+                     if state[self.simulator.input.index(resource + '_availability')] > 0:
+                         mask[self.simulator.output.index((resource, task_type))] = 1
+ 
+-        mask[-1] = 1 # Set postpone action to 1
++        # if sum(mask[0:len(self.simulator.output)]) > 0:
++        #     mask[-2] = 1 # Set postpone action to 1
++        # else:
++        #     mask[-1] = 1 # Fake transtition
+ 
+         return list(map(bool, mask))
+ 
+@@ -404,8 +415,10 @@ class PPOPlanner(Planner):
+ 
+ 
+ 
+-    def plan(self, available_resources, unassigned_tasks, resource_pool):
++    def plan(self, available_resources, unassigned_tasks, resource_pools):
++        #if len(self.get_possible_assignments(self, available_resources, unassigned_tasks, resource_pools)) == 0:
+         state = self.simulator.get_state()
++        
+         #print(state)
+         #mask = self.define_action_masks(state)        
+         
+diff --git a/scenarios/results_svfa/bpo b/scenarios/results_svfa/bpo
+deleted file mode 100644
+index fb4d424..0000000
+Binary files a/scenarios/results_svfa/bpo and /dev/null differ
+diff --git a/scenarios/results_svfa/complete b/scenarios/results_svfa/complete
+deleted file mode 100644
+index db73509..0000000
+Binary files a/scenarios/results_svfa/complete and /dev/null differ
+diff --git a/scenarios/results_svfa/complete_parallel b/scenarios/results_svfa/complete_parallel
+deleted file mode 100644
+index db73509..0000000
+Binary files a/scenarios/results_svfa/complete_parallel and /dev/null differ
+diff --git a/scenarios/results_svfa/complete_reversed b/scenarios/results_svfa/complete_reversed
+deleted file mode 100644
+index 377faa6..0000000
+Binary files a/scenarios/results_svfa/complete_reversed and /dev/null differ
+diff --git a/scenarios/results_svfa/down_stream b/scenarios/results_svfa/down_stream
+deleted file mode 100644
+index 13224b2..0000000
+Binary files a/scenarios/results_svfa/down_stream and /dev/null differ
+diff --git a/scenarios/results_svfa/high_utilization b/scenarios/results_svfa/high_utilization
+deleted file mode 100644
+index 6c8c660..0000000
+Binary files a/scenarios/results_svfa/high_utilization and /dev/null differ
+diff --git a/scenarios/results_svfa/low_utilization b/scenarios/results_svfa/low_utilization
+deleted file mode 100644
+index 4c49da5..0000000
+Binary files a/scenarios/results_svfa/low_utilization and /dev/null differ
+diff --git a/scenarios/results_svfa/n_system b/scenarios/results_svfa/n_system
+deleted file mode 100644
+index 6377545..0000000
+Binary files a/scenarios/results_svfa/n_system and /dev/null differ
+diff --git a/scenarios/results_svfa/parallel b/scenarios/results_svfa/parallel
+deleted file mode 100644
+index e808633..0000000
+Binary files a/scenarios/results_svfa/parallel and /dev/null differ
+diff --git a/scenarios/results_svfa/slow_server b/scenarios/results_svfa/slow_server
+deleted file mode 100644
+index 76327f1..0000000
+Binary files a/scenarios/results_svfa/slow_server and /dev/null differ
+diff --git a/scenarios/simulator.py b/scenarios/simulator.py
+index bca935b..0362c5a 100644
+--- a/scenarios/simulator.py
++++ b/scenarios/simulator.py
+@@ -4,8 +4,9 @@ import sys
+ from enum import Enum, auto
+ from collections import deque
+ import random
+-from planners import GreedyPlanner
++from planners import GreedyPlanner, PPOPlanner
+ import json
++import math
+ 
+ class Event:
+     def __init__(self, event_type, moment, task=None, resource=None):
+@@ -20,6 +21,7 @@ class Event:
+ 
+ 
+ class EventType(Enum):
++    ASSIGNMENT_CHECK = auto()
+     CASE_ARRIVAL = auto()
+     CASE_DEPARTURE = auto()
+     TASK_START = auto()
+@@ -66,7 +68,9 @@ class Task:
+ 
+ 
+ class Simulator:    
+-    def __init__(self, running_time, planner, config_type, reward_function=None, write_to=None, cv=0.25):
++    def __init__(self, running_time, planner, config_type, 
++                 reward_function=None, check_interval=None,
++                 write_to=None, interval_mode=False):
+         self.config_type = config_type
+         with open(os.path.join(sys.path[0], "config.txt"), "r") as f:
+             data = f.read()
+@@ -74,6 +78,8 @@ class Simulator:
+         config = json.loads(data)        
+         config = config[config_type]
+             
++        self.interval_mode = interval_mode
++
+         self.running_time = running_time
+         self.status = "RUNNING"
+         self.debug = False
+@@ -85,8 +91,6 @@ class Simulator:
+         self.sumxx = 0
+         self.sumw = 0
+ 
+-        self.cv = cv # for Gamma distribution
+-
+         self.available_tasks = []
+         self.waiting_parallel_tasks = []
+         self.reserved_tasks = []
+@@ -117,12 +121,14 @@ class Simulator:
+                      self.task_types +\
+                      ['Total tasks'] # Should be lists of strings
+         #                      [resource + '_busy_time' for resource in self.resources] + \
+-        self.output = [(resource, task) for task in self.task_types[1:] for resource in self.resources if resource in self.resource_pools[task]] + ['Postpone']
++        self.output = [(resource, task) for task in self.task_types[1:] for resource in self.resources if resource in self.resource_pools[task]] + ['Postpone'] + ['Wait']
+ 
+         self.reward_function = reward_function
+         self.write_to = write_to
+         self.current_reward = 0
+         self.total_reward = 0
++        self.check_interval = check_interval
++        self.fake_transition = False
+ 
+         self.reward_case = 1
+         self.reward_task_start = 0
+@@ -202,10 +208,6 @@ class Simulator:
+         return case
+ 
+     def process_assignment(self, assignment):
+-        #print(assignment, [task.task_type for task in self.available_tasks], [resource for resource in self.available_resources])    
+-        if self.reward_function == 'task':
+-            self.current_reward += self.reward_task_start  
+-            self.total_reward += self.reward_task_start
+         self.available_resources.remove(assignment[0])
+         self.available_tasks.remove(assignment[1])
+         # self.events.append(Event(EventType.TASK_START, self.now, assignment[0], assignment[1]))
+@@ -214,6 +216,7 @@ class Simulator:
+         self.resource_last_start[assignment[0]] = self.now
+         assignment[1].start_time = self.now
+         pt = self.sample_processing_time(assignment[0], assignment[1].task_type)
++        #print(pt)
+         self.events.append(Event(EventType.TASK_COMPLETE, self.now + pt, assignment[1], assignment[0]))
+         self.events.sort()
+ 
+@@ -241,6 +244,9 @@ class Simulator:
+     def init_simulation(self):
+         self.available_resources = [resource for resource in self.resources]
+         self.events.append(Event(EventType.CASE_ARRIVAL, self.sample_interarrival_time()))
++        if self.interval_mode == True:
++            self.events.append(Event(EventType.ASSIGNMENT_CHECK, self.check_interval))
++
+ 
+     def get_state(self):
+         ### Resource binary, busy time, assigned to + nr of each task
+@@ -266,6 +272,7 @@ class Simulator:
+         else:
+             task_types_num = [0 for el in self.task_types]
+         # + resources_busy_time +
++        #normalized_nr_tasks = min(1, len(self.available_tasks)/1000)
+         return resources_available + resources_assigned + task_types_num + [len(self.available_tasks)]
+ 
+         ### Resource binary + proportion tasks + total task
+@@ -288,6 +295,16 @@ class Simulator:
+             event = self.events.pop(0)            
+             self.now = event.moment
+             if self.now <= self.running_time: # To prevent next event time after running time
++                if event.event_type == EventType.ASSIGNMENT_CHECK:
++                    current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
++                    self.current_reward -= current_reward
++                    self.total_reward -= current_reward
++                    self.last_reward_moment = self.now
++
++                    self.events.append(Event(EventType.ASSIGNMENT_CHECK, self.now + self.check_interval))
++                    self.events.sort()
++                    break
++
+                 if event.event_type == EventType.CASE_ARRIVAL:
+                     if self.reward_function == 'AUC':
+                         current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+@@ -300,33 +317,28 @@ class Simulator:
+                     for task in self.generate_initial_task(case.id):
+                         self.available_tasks.append(task)
+                     self.events.append(Event(EventType.CASE_ARRIVAL, self.now + self.sample_interarrival_time())) # Schedule new arrival
+-                    if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
+-                        self.events.append(Event(EventType.PLAN_TASKS, self.now))
++                    if self.interval_mode == False:
++                        if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
++                            self.events.append(Event(EventType.PLAN_TASKS, self.now))
+                     self.events.sort()
+ 
+-                if event.event_type == EventType.PLAN_TASKS:
+-                    # Calculate reward
+-                    if self.reward_function == 'AUC':
+-                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+-                        self.current_reward -= current_reward
+-                        self.total_reward -= current_reward
+-                        self.last_reward_moment = self.now
+-
+-                    if self.planner == None: # DRL algorithm handles processing of assignments (training and inference)
+-                        # there only is an assignment if there are free resources and tasks
+-                        if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
+-                            break # Return to gym environment
+-                    else: #at inference time, we call the plan function of the planner
+-                        assignments = self.planner.plan(self.available_tasks, self.available_resources, self.resource_pools)
+-                        for assignment in assignments:
+-                            self.process_assignment(assignment) # Reserves the task and resource, schedules TASK_START event
+-                            # Reward +1 for each task start
+-
+-                # if event.event_type == EventType.TASK_START:
+-                #     event.task.start_time = self.now
+-                #     pt = self.sample_processing_time(event.task.task_type, event.resource)
+-                #     self.events.append(Event(EventType.TASK_COMPLETE, self.now + pt, event.task, event.resource))
+-                #     self.events.sort()
++                if self.interval_mode == False:
++                    if event.event_type == EventType.PLAN_TASKS:
++                        # Calculate reward
++                        if self.reward_function == 'AUC':
++                            current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
++                            self.current_reward -= current_reward
++                            self.total_reward -= current_reward
++                            self.last_reward_moment = self.now
++
++                        if self.planner == None: # DRL algorithm handles processing of assignments (training and inference)
++                            # there only is an assignment if there are free resources and tasks
++                            if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
++                                break # Return to gym environment
++                        else: #at inference time, we call the plan function of the planner
++                            assignments = self.planner.plan(self.available_tasks, self.available_resources, self.resource_pools)
++                            for assignment in assignments:
++                                self.process_assignment(assignment) # Reserves the task and resource, schedules TASK_START event
+ 
+                 if event.event_type == EventType.TASK_COMPLETE:
+                     self.cases[event.task.case_id].append([event.task.task_type, event.resource, np.round(self.now, 2)])
+@@ -380,12 +392,20 @@ class Simulator:
+                             self.events.append(Event(EventType.CASE_DEPARTURE, self.now, event.task))
+                         else:
+                             self.available_tasks.append(next_task)
+-                        
+-                    if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
+-                        self.events.append(Event(EventType.PLAN_TASKS, self.now))
++
++                    if self.interval_mode == False:    
++                        if len(self.available_tasks) > 0 and len(self.available_resources) > 0:
++                            self.events.append(Event(EventType.PLAN_TASKS, self.now))
+                     self.events.sort()
+ 
+                 if event.event_type == EventType.CASE_DEPARTURE:
++                    # Calculate reward
++                    if self.reward_function == 'AUC':
++                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases) # include case that departed
++                        self.current_reward -= current_reward
++                        self.total_reward -= current_reward
++                        self.last_reward_moment = self.now
++
+                     self.cases[event.task.case_id].append(['completed', self.now])
+                     case = self.uncompleted_cases[event.task.case_id]
+                     case.departure_time = self.now
+@@ -397,24 +417,6 @@ class Simulator:
+                     self.sumxx += cycle_time * cycle_time
+                     self.sumw += 1
+ 
+-                    # Calculate reward
+-                    if self.reward_function == 'AUC':
+-                        current_reward = (self.now - self.last_reward_moment) * len(self.uncompleted_cases)
+-                        self.current_reward -= current_reward
+-                        self.total_reward -= current_reward
+-                        self.last_reward_moment = self.now
+-
+-                    if self.reward_function == 'task':
+-                        self.current_reward += self.reward_case #- len(self.uncompleted_cases)
+-                        self.total_reward += self.reward_case
+-                        #print(cycle_time, self.reward_case / cycle_time)
+-
+-                    if self.reward_function == 'cycle_time':
+-                        # self.current_reward -= cycle_time #- len(self.uncompleted_cases)
+-                        # self.total_reward -= cycle_time
+-                        reward = self.reward_case / (1 + cycle_time)
+-                        self.current_reward += reward #- len(self.uncompleted_cases)
+-                        self.total_reward += reward
+ 
+ 
+         if self.now > self.running_time:
+@@ -436,11 +438,11 @@ class Simulator:
+                     self.resource_total_busy_time[event.resource] += self.running_time - self.resource_last_start[event.resource]
+                     
+             # Uncomment to include the cycle time of uncompleted cases
+-            # for case in self.uncompleted_cases.values():
+-            #     cycle_time = self.running_time - case.arrival_time
+-            #     self.sumx += cycle_time
+-            #     self.sumxx += cycle_time * cycle_time
+-            #     self.sumw += 1
++            for case in self.uncompleted_cases.values():
++                cycle_time = self.running_time - case.arrival_time
++                self.sumx += cycle_time
++                self.sumxx += cycle_time * cycle_time
++                self.sumw += 1
+ 
+             print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
+             print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
+diff --git a/scenarios/train_DRL.py b/scenarios/train_DRL.py
+index 9f5c8ab..55fe9f6 100644
+--- a/scenarios/train_DRL.py
++++ b/scenarios/train_DRL.py
+@@ -1,6 +1,6 @@
+ from collections import deque
+ from subprocess import call
+-import gym
++import gymnasium as gym
+ import os
+ import numpy as np
+ from bpo_env import BPOEnv
+@@ -17,41 +17,48 @@ from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_r
+ from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
+ from stable_baselines3.common.logger import configure
+ 
+-from gym.wrappers import normalize
++from gymnasium.wrappers import normalize
+ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+ 
+ from callbacks import SaveOnBestTrainingRewardCallback
+ from callbacks import custom_schedule, linear_schedule
+ 
++import wandb
++from wandb.integration.sb3 import WandbCallback
++
++
+ 
+ class CustomPolicy(MaskableActorCriticPolicy):
+     def __init__(self, *args, **kwargs):
+         super(CustomPolicy, self).__init__(*args, **kwargs,
+-                                           net_arch=[dict(pi=[512],
+-                                                          vf=[512])])
++                                           net_arch=[dict(pi=[128, 128],
++                                                          vf=[128, 128])])
+ 
+ 
+ if __name__ == '__main__':
+     #if true, load model for a new round of training
+     
+-    running_time = 5000
++    running_time = 3000
+     num_cpu = 1
+     load_model = False
+     model_name = "ppo_masked"
+-    config_type= 'complete_reversed'#sys.argv[1]
++    config_type= 'complete'#sys.argv[1]
+     print(config_type)
+-    reward_function = 'cycle_time'
+-    time_steps = 30000000 # Total timesteps
+-    n_steps = 2048 # Number of steps for each network update
++    reward_function = 'AUC'
++    time_steps = 2000000 # Total timesteps    
++    check_interval = 0.01
++    n_steps = int(running_time/check_interval) # Number of steps for each network update
+     # Create log dir
+-    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{n_steps}/" # Logging training results
++    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{check_interval}/" # Logging training results
+ 
+     os.makedirs(log_dir, exist_ok=True)
+ 
+     print(f'Training agent for {config_type} with {time_steps} timesteps in updates of {n_steps} steps.')
+     # Create and wrap the environment
+     # Reward functions: 'AUC', 'case_task'
+-    env = BPOEnv(running_time=running_time, config_type=config_type, reward_function=reward_function, write_to=log_dir)  # Initialize env
++    env = BPOEnv(running_time=running_time, config_type=config_type, 
++                 reward_function=reward_function, check_interval=check_interval,
++                 write_to=log_dir, interval_mode=True)  # Initialize env
+     env = Monitor(env, log_dir)  
+ 
+     # resource_str = ''
+@@ -61,9 +68,24 @@ if __name__ == '__main__':
+     #     # Writing data to a file
+     #     file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
+  
+-    # Create the model
+-    model = MaskablePPO(MaskableActorCriticPolicy, env, clip_range=0.1, learning_rate=linear_schedule(0.0001), n_steps=int(n_steps), gamma=0.999, verbose=1)
+ 
++    config = {
++        "policy_type": "MaskableActorCriticPolicy",
++        "total_timesteps": time_steps,
++        "env_name": config_type,
++    }
++    run = wandb.init(
++        project="sb3",
++        config=config,
++        sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
++        monitor_gym=True,  # auto-upload the videos of agents playing the game
++        save_code=True,  # optional
++    )
++
++
++    # Create the model
++    model = MaskablePPO(MaskableActorCriticPolicy, env, learning_rate=0.0001, n_steps=int(n_steps), clip_range=0.1, gamma=1, verbose=1)
++    #learning_rate=linear_schedule(0.0001)
+     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
+     # tensorboard --logdir ./tmp/
+     # then, in a browser page, access localhost:6006 to see the board
+@@ -72,7 +94,7 @@ if __name__ == '__main__':
+ 
+     # Train the agent
+     callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
+-    model.learn(total_timesteps=int(time_steps), callback=callback)
++    model.learn(total_timesteps=int(time_steps), callback=WandbCallback())
+ 
+     # For episode rewards, use env.get_episode_rewards()
+     # env.get_episode_times() returns the wall clock time in seconds of each episode (since start)
+@@ -81,7 +103,7 @@ if __name__ == '__main__':
+     print(env.get_episode_rewards())
+     #     print(env.get_episode_times())
+ 
+-    model.save(f'{log_dir}/{model_name}_{running_time}_final')
++    model.save(f'{log_dir}/{model_name}_{time_steps}_{check_interval}_final')
+ 
+     #import matplotlib.pyplot as plt
+     #plot_results([log_dir], time_steps, results_plotter.X_TIMESTEPS, f"{model_name}")

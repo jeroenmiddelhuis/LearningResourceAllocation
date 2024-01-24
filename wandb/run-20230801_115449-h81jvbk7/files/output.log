@@ -1,0 +1,18 @@
+Using cpu device
+Wrapping the env in a DummyVecEnv.
+Traceback (most recent call last):
+  File "c:\Users\jeroe\OneDrive - TU Eindhoven\Documents\Github\LearningResourceAllocation_Interval\LearningResourceAllocation\scenarios\train_DRL.py", line 96, in <module>
+    model.learn(total_timesteps=int(time_steps), callback=WandbCallback())
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\sb3_contrib\ppo_mask\ppo_mask.py", line 514, in learn
+    total_timesteps, callback = self._setup_learn(
+                                ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\sb3_contrib\ppo_mask\ppo_mask.py", line 239, in _setup_learn
+    self._last_obs = self.env.reset()
+                     ^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\stable_baselines3\common\vec_env\dummy_vec_env.py", line 76, in reset
+    obs, self.reset_infos[env_idx] = self.envs[env_idx].reset(seed=self._seeds[env_idx])
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\stable_baselines3\common\monitor.py", line 83, in reset
+    return self.env.reset(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: BPOEnv.reset() got an unexpected keyword argument 'seed'

@@ -1,0 +1,22 @@
+Using cpu device
+Wrapping the env in a DummyVecEnv.
+-------Resetting environment-------
+Traceback (most recent call last):
+  File "c:\Users\jeroe\OneDrive - TU Eindhoven\Documents\Github\LearningResourceAllocation_Interval\LearningResourceAllocation\scenarios\train_DRL.py", line 96, in <module>
+    model.learn(total_timesteps=int(time_steps), callback=WandbCallback())
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\sb3_contrib\ppo_mask\ppo_mask.py", line 526, in learn
+    continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, self.n_steps, use_masking)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\sb3_contrib\ppo_mask\ppo_mask.py", line 306, in collect_rollouts
+    new_obs, rewards, dones, infos = env.step(actions)
+                                     ^^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\stable_baselines3\common\vec_env\base_vec_env.py", line 197, in step
+    return self.step_wait()
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\stable_baselines3\common\vec_env\dummy_vec_env.py", line 58, in step_wait
+    obs, self.buf_rews[env_idx], terminated, truncated, self.buf_infos[env_idx] = self.envs[env_idx].step(
+                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jeroe\anaconda3\envs\drl_env\Lib\site-packages\stable_baselines3\common\monitor.py", line 94, in step
+    observation, reward, terminated, truncated, info = self.env.step(action)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 5, got 4)

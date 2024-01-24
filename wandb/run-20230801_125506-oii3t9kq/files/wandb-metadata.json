@@ -1,0 +1,50 @@
+{
+    "os": "Windows-10-10.0.22621-SP0",
+    "python": "3.11.4",
+    "heartbeatAt": "2023-08-01T10:55:07.591851",
+    "startedAt": "2023-08-01T10:55:06.545875",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "c:\\Users\\jeroe\\OneDrive - TU Eindhoven\\Documents\\Github\\LearningResourceAllocation_Interval\\LearningResourceAllocation\\scenarios\\train_DRL.py",
+    "codePath": "scenarios\\train_DRL.py",
+    "git": {
+        "remote": "https://github.com/jeroenmiddelhuis/LearningResourceAllocation.git",
+        "commit": "4f5c91f3e7728ddacccfad44a4cef03b7e329c32"
+    },
+    "email": "jeroen.middelhuis@live.nl",
+    "root": "C:/Users/jeroe/OneDrive - TU Eindhoven/Documents/Github/LearningResourceAllocation_Interval/LearningResourceAllocation",
+    "host": "Jeroen",
+    "username": "jeroe",
+    "executable": "C:\\Users\\jeroe\\anaconda3\\envs\\drl_env\\python.exe",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 4201.0,
+        "min": 0.0,
+        "max": 4201.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4201.0,
+            "min": 0.0,
+            "max": 4201.0
+        }
+    ],
+    "disk": {
+        "total": 1862.2353477478027,
+        "used": 607.2965545654297
+    },
+    "gpu": "NVIDIA GeForce RTX 4070",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070",
+            "memory_total": 12878610432
+        }
+    ],
+    "memory": {
+        "total": 31.15692901611328
+    }
+}

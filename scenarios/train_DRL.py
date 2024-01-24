@@ -1,6 +1,6 @@
 from collections import deque
 from subprocess import call
-import gym
+import gymnasium as gym
 import os
 import numpy as np
 from bpo_env import BPOEnv
@@ -17,41 +17,57 @@ from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_r
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
 from stable_baselines3.common.logger import configure
 
-from gym.wrappers import normalize
+from gymnasium.wrappers import normalize
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 from callbacks import SaveOnBestTrainingRewardCallback
 from callbacks import custom_schedule, linear_schedule
 
+import wandb
+from wandb.integration.sb3 import WandbCallback
+
+nr_layers = 2
+nr_neurons = 128
+clip_range = 0.2
+n_steps = 25600
+batch_size = 256
+lr = 3e-05
+
+
+net_arch = dict(pi=[nr_neurons for _ in range(nr_layers)], vf=[nr_neurons for _ in range(nr_layers)])
 
 class CustomPolicy(MaskableActorCriticPolicy):
     def __init__(self, *args, **kwargs):
         super(CustomPolicy, self).__init__(*args, **kwargs,
-                                           net_arch=[dict(pi=[512],
-                                                          vf=[512])])
+                                           net_arch=net_arch)
 
 
 if __name__ == '__main__':
-    #if true, load model for a new round of training
-    
+    config_type= 'n_system'
+    nr_of_episodes = 1000
+    check_interval = 0.5
+
     running_time = 5000
     num_cpu = 1
     load_model = False
     model_name = "ppo_masked"
-    config_type= 'complete_reversed'#sys.argv[1]
+
     print(config_type)
-    reward_function = 'cycle_time'
-    time_steps = 30000000 # Total timesteps
-    n_steps = 2048 # Number of steps for each network update
+    reward_function = 'AUC'
+   
+    n_steps = int(running_time/check_interval) # Number of steps for each network update
+    time_steps = n_steps * nr_of_episodes # Total timesteps 
     # Create log dir
-    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{n_steps}/" # Logging training results
+    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{check_interval}/" # Logging training results
 
     os.makedirs(log_dir, exist_ok=True)
 
     print(f'Training agent for {config_type} with {time_steps} timesteps in updates of {n_steps} steps.')
     # Create and wrap the environment
     # Reward functions: 'AUC', 'case_task'
-    env = BPOEnv(running_time=running_time, config_type=config_type, reward_function=reward_function, write_to=log_dir)  # Initialize env
+    env = BPOEnv(running_time=running_time, config_type=config_type, 
+                 reward_function=reward_function, check_interval=check_interval,
+                 write_to=log_dir)  # Initialize env
     env = Monitor(env, log_dir)  
 
     # resource_str = ''
@@ -60,14 +76,14 @@ if __name__ == '__main__':
     # with open(f'{log_dir}results_{config_type}.txt', "w") as file:
     #     # Writing data to a file
     #     file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
- 
-    # Create the model
-    model = MaskablePPO(MaskableActorCriticPolicy, env, clip_range=0.1, learning_rate=linear_schedule(0.0001), n_steps=int(n_steps), gamma=0.999, verbose=1)
 
+    # Create the model
+    model = MaskablePPO(MaskableActorCriticPolicy, env, learning_rate=3e-5, n_steps=int(n_steps), batch_size=512, clip_range=0.1, gamma=1, verbose=1) #, tensorboard_log=f'{log_dir}/tensorboard/'
+    #learning_rate=linear_schedule(0.0001)
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
     # then, in a browser page, access localhost:6006 to see the board
-    model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
+    # model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
 
 
     # Train the agent
@@ -81,7 +97,7 @@ if __name__ == '__main__':
     print(env.get_episode_rewards())
     #     print(env.get_episode_times())
 
-    model.save(f'{log_dir}/{model_name}_{running_time}_final')
+    model.save(f'{log_dir}/{model_name}_{time_steps}_{check_interval}_final')
 
     #import matplotlib.pyplot as plt
     #plot_results([log_dir], time_steps, results_plotter.X_TIMESTEPS, f"{model_name}")

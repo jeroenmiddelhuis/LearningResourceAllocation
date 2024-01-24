@@ -1,0 +1,26 @@
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Current SDK version is 0.15.7
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Configure stats pid to 17668
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Loading settings from C:\Users\jeroe\.config\wandb\settings
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Loading settings from C:\Users\jeroe\OneDrive - TU Eindhoven\Documents\Github\LearningResourceAllocation_Interval\LearningResourceAllocation\wandb\settings
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2023-08-01 13:01:52,137 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-08-01 13:01:52,138 INFO    MainThread:17668 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'scenarios\\train_DRL.py', 'program': 'c:\\Users\\jeroe\\OneDrive - TU Eindhoven\\Documents\\Github\\LearningResourceAllocation_Interval\\LearningResourceAllocation\\scenarios\\train_DRL.py'}
+2023-08-01 13:01:52,138 INFO    MainThread:17668 [wandb_init.py:_log_setup():507] Logging user logs to C:\Users\jeroe\OneDrive - TU Eindhoven\Documents\Github\LearningResourceAllocation_Interval\LearningResourceAllocation\wandb\run-20230801_130152-jfpb23pl\logs\debug.log
+2023-08-01 13:01:52,138 INFO    MainThread:17668 [wandb_init.py:_log_setup():508] Logging internal logs to C:\Users\jeroe\OneDrive - TU Eindhoven\Documents\Github\LearningResourceAllocation_Interval\LearningResourceAllocation\wandb\run-20230801_130152-jfpb23pl\logs\debug-internal.log
+2023-08-01 13:01:52,139 INFO    MainThread:17668 [wandb_init.py:init():547] calling init triggers
+2023-08-01 13:01:52,139 INFO    MainThread:17668 [wandb_init.py:init():554] wandb.init called with sweep_config: {}
+config: {'policy_type': 'MaskableActorCriticPolicy', 'total_timesteps': 1000000, 'env_name': 'complete'}
+2023-08-01 13:01:52,139 INFO    MainThread:17668 [wandb_init.py:init():596] starting backend
+2023-08-01 13:01:52,139 INFO    MainThread:17668 [wandb_init.py:init():600] setting up manager
+2023-08-01 13:01:52,143 INFO    MainThread:17668 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=spawn, using: spawn
+2023-08-01 13:01:52,146 INFO    MainThread:17668 [wandb_init.py:init():606] backend started and connected
+2023-08-01 13:01:52,157 INFO    MainThread:17668 [wandb_init.py:init():697] updated telemetry
+2023-08-01 13:01:52,332 INFO    MainThread:17668 [wandb_init.py:init():730] communicating run to backend with 60.0 second timeout
+2023-08-01 13:01:53,252 INFO    MainThread:17668 [wandb_run.py:_on_init():2174] communicating current version
+2023-08-01 13:01:53,582 INFO    MainThread:17668 [wandb_run.py:_on_init():2183] got version response 
+2023-08-01 13:01:53,582 INFO    MainThread:17668 [wandb_init.py:init():781] starting run threads in backend
+2023-08-01 13:01:57,911 INFO    MainThread:17668 [wandb_run.py:_console_start():2153] atexit reg
+2023-08-01 13:01:57,912 INFO    MainThread:17668 [wandb_run.py:_redirect():2008] redirect: wrap_raw
+2023-08-01 13:01:57,912 INFO    MainThread:17668 [wandb_run.py:_redirect():2073] Wrapping output streams.
+2023-08-01 13:01:57,912 INFO    MainThread:17668 [wandb_run.py:_redirect():2098] Redirects installed.
+2023-08-01 13:01:57,912 INFO    MainThread:17668 [wandb_init.py:init():822] run started, returning control to user process
