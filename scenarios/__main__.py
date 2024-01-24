@@ -1,5 +1,10 @@
 from simulator import Simulator
+<<<<<<< HEAD
 from planners import GreedyPlanner, ShortestProcessingTime, FIFO, Random, PPOPlanner
+=======
+from planners import PPOPlanner
+from planners_benchmark import ParkSong, GreedyPlanner, ShortestProcessingTime, FIFO, Random
+>>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
 from time import time
 import numpy as np
 import os
@@ -25,6 +30,7 @@ def simulate_competition(model_name):
         #planner = ShortestProcessingTime()
         #planner = FIFO()
         #planner = Random()       
+<<<<<<< HEAD
         model_folder = f"{model_name}_10000000_0.1"
         if interval == True:
             check_interval = float(model_folder.split('_')[-1])
@@ -32,12 +38,21 @@ def simulate_competition(model_name):
             check_interval = None
         planner = PPOPlanner("./tmp/slow_server_10000000_0.1/best_model.zip", check_interval=check_interval)
         
+=======
+        #planner = ParkSong()
+        #planner = PPOPlanner(os.getcwd() + "\\scenarios\\tmp\\" + f"{model_name}_50000000_51200" + "\\best_model.zip")
+
+>>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
                              
         if write == False:
             log_dir = None
         simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', check_interval=check_interval, write_to=log_dir)
 
+<<<<<<< HEAD
         if type(planner) == PPOPlanner:
+=======
+        if type(planner) == PPOPlanner or type(planner) == ParkSong:
+>>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
             planner.linkSimulator(simulator)
 
         if write == True and i == 0:
@@ -64,7 +79,11 @@ def simulate_competition(model_name):
     #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
+<<<<<<< HEAD
     for model_name in ['slow_server']:#['complete','complete_reversed', 'complete_parallel', 'n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
+=======
+    for model_name in ['n_system']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:
+>>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 

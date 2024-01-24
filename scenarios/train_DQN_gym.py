@@ -23,20 +23,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from callbacks import SaveOnBestTrainingRewardCallback
 from callbacks import custom_schedule, linear_schedule
 
-import wandb
-from wandb.integration.sb3 import WandbCallback
 
-nr_layers = 2
-nr_neurons = 128
-clip_range = 0.2
-n_steps = 25600
-batch_size = 256
-lr = 3e-05
-
-
-net_arch = dict(pi=[nr_neurons for _ in range(nr_layers)], vf=[nr_neurons for _ in range(nr_layers)])
-
-nr_layers = 2
+nr_layers = 3
 nr_neurons = 64
 clip_fraction = 0.1
 n_steps = 51200
@@ -51,24 +39,6 @@ class CustomPolicy(MaskableActorCriticPolicy):
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    config_type= 'n_system'
-    nr_of_episodes = 1000
-    check_interval = 0.5
-
-    running_time = 5000
-    num_cpu = 1
-    load_model = False
-    model_name = "ppo_masked"
-
-    print(config_type)
-    reward_function = 'AUC'
-   
-    n_steps = int(running_time/check_interval) # Number of steps for each network update
-    time_steps = n_steps * nr_of_episodes # Total timesteps 
-    # Create log dir
-    log_dir = f"./scenarios/tmp/{config_type}_{time_steps}_{check_interval}/" # Logging training results
-=======
     #if true, load model for a new round of training
     running_time = 5000
     num_cpu = 1
@@ -81,7 +51,6 @@ if __name__ == '__main__':
     n_steps = 51200 # Number of steps for each network update
     # Create log dir
     log_dir = f"./tmp/{config_type}_{int(time_steps)}_{n_steps}/" # Logging training results
->>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
 
     os.makedirs(log_dir, exist_ok=True)
 
@@ -89,18 +58,6 @@ if __name__ == '__main__':
     # Create and wrap the environment
     # Reward functions: 'AUC', 'case_task'
     env = BPOEnv(running_time=running_time, config_type=config_type, 
-<<<<<<< HEAD
-                 reward_function=reward_function, check_interval=check_interval,
-                 write_to=log_dir)  # Initialize env
-    env = Monitor(env, log_dir)  
-
-    # resource_str = ''
-    # for resource in env.simulator.resources:
-    #     resource_str += resource + ','
-    # with open(f'{log_dir}results_{config_type}.txt', "w") as file:
-    #     # Writing data to a file
-    #     file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
-=======
                 reward_function=reward_function, postpone_penalty=postpone_penalty,
                 write_to=log_dir)  # Initialize env
     env = Monitor(env, log_dir)
@@ -114,16 +71,12 @@ if __name__ == '__main__':
  
 
     # Create the model
-    model = MaskablePPO(CustomPolicy, env, clip_range=0.1, learning_rate=linear_schedule(3e-4), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
->>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
+    model = MaskablePPO(CustomPolicy, env, clip_range=0.2, learning_rate=linear_schedule(3e-4), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
 
-    # Create the model
-    model = MaskablePPO(MaskableActorCriticPolicy, env, learning_rate=3e-5, n_steps=int(n_steps), batch_size=512, clip_range=0.1, gamma=1, verbose=1) #, tensorboard_log=f'{log_dir}/tensorboard/'
-    #learning_rate=linear_schedule(0.0001)
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
     # then, in a browser page, access localhost:6006 to see the board
-    # model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
+    model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
 
 
     # Train the agent
@@ -146,11 +99,7 @@ if __name__ == '__main__':
     print(env.get_episode_rewards())
     #     print(env.get_episode_times())
 
-<<<<<<< HEAD
-    model.save(f'{log_dir}/{model_name}_{time_steps}_{check_interval}_final')
-=======
     model.save(f'{log_dir}/{config_type}_{running_time}_final')
->>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
 
     #import matplotlib.pyplot as plt
     #plot_results([log_dir], time_steps, results_plotter.X_TIMESTEPS, f"{model_name}")

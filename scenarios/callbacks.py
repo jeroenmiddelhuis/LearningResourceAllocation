@@ -48,9 +48,13 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
             #     else:
             #         self.episode_lengths.append(x[-1]-x[-2])
             #print(x,y, self.episode_lengths)
-            if len(x) > 5:
+            if len(x) > 10:
                 # Mean training reward over the last 100 episodes
+<<<<<<< HEAD
                 mean_reward = np.mean(y[-3:])
+=======
+                mean_reward = np.mean(y[-10:])
+>>>>>>> 963524a6db488a8b60cdc2cfd22e9a61686f17cf
                 # nr_eps = 5
                 # mean_reward = np.mean([y[-i]/self.episode_lengths[-i] for i in range(len(y[-nr_eps:]))]) 
                 if self.verbose >= 1:
