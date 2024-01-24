@@ -1,1 +1,0 @@
-uncompleted_cases,Resource 1,Resource 2,Resource 3,Resource 4,Resource 5,Resource 6,Resource 7,Resource 8,Resource 9,Resource 10,Resource 11,Resource 12,total_reward,mean_cycle_time,std_cycle_time
