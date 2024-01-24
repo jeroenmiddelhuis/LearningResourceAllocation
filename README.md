@@ -1,6 +1,6 @@
 # LearningResourceAllocation
 
-This repository contains the supplementary code for the paper "Learning policies for resource allocation in business processes" (Middelhuis et al., 2023)
+This repository contains the supplementary code for the paper "Learning policies for resource allocation in business processes" (Middelhuis et al., 2024)
 
 The Python version used was 3.9.7. To create an environment and install required packages, use the following commands:
 * ```python -m venv env .\env\Scripts\activate``` 
