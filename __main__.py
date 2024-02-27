@@ -8,25 +8,26 @@ import sys
 
 
 running_time = 5000
-write = True
+write = False
 # Original main
 def simulate_competition(model_name):
     results = []
     times = []
-    log_dir=os.getcwd() +'\\results'
+    log_dir=os.getcwd() +'\\results2'
     os.makedirs(log_dir, exist_ok=True)
     #log_dir=None
     for i in range(100):
         if i % 5 == 0:
             print(i)
+
+        # To change the planner, uncomment one of the following lines. The RLRAM planner has its own file: __main__RLRAM.py
         #planner = DedicatedResourcePlanner()
         #planner = ShortestProcessingTime()
         #planner = FIFO()
         #planner = Random()       
         #planner = ParkSong()
-        planner = DDQNPlanner(model_name)
-        #planner = PPOPlanner(os.getcwd() + "\\tmp\\" + f"{model_name}_50000000_25600" + "\\best_model.zip")
-
+        #planner = DDQNPlanner(model_name)
+        planner = PPOPlanner(os.getcwd() + "\\tmp\\" + f"{model_name}_50000000_25600" + "\\best_model.zip")
                              
         if write == False:
             log_dir = None
@@ -46,22 +47,12 @@ def simulate_competition(model_name):
                 # Writing data to a file
                 file.write(f"uncompleted_cases,{resource_str}total_reward,mean_cycle_time,std_cycle_time\n")
 
-
-
-        t1 = time()
         result = simulator.run()
-        #print(f'Simulation finished in {time()-t1} seconds')
-        #print(result)
-        times.append(time()-t1)
         results.append(result)  
-        #print('\n') 
 
-    # with open(f'{simulator.write_to}{planner}_results_{simulator.config_type}.txt', "w") as out_file:
-    #     for i in range(len(results)):
-    #         out_file.write(f'{times[i]},{results[i]}\n')
 
 def main():
-    for model_name in ['complete', 'complete_reversed', 'complete_parallel']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
+    for model_name in ['n_system']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 

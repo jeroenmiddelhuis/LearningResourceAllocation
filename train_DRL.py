@@ -24,6 +24,7 @@ from callbacks import SaveOnBestTrainingRewardCallback, EvalPolicyCallback
 from callbacks import custom_schedule, linear_schedule
 
 
+# Input parameters
 nr_layers = 2
 nr_neurons = 128
 clip_range = 0.2
@@ -44,11 +45,11 @@ if __name__ == '__main__':
     running_time = 5000
     num_cpu = 1
     load_model = False
-    config_type= 'slow_server'#ys.argv[1]#'n_system'
+    config_type= 'parallel' # Config types as given in config.txt
     print(config_type)
     reward_function = 'cycle_time'
     postpone_penalty = 0
-    time_steps = 2e7 # Total timesteps
+    time_steps = 2e7 # Total timesteps for training
     #n_steps = 25600 # Number of steps for each network update
     # Create log dir
     log_dir = f"./tmp/{config_type}_{int(time_steps)}_{n_steps}/" # Logging training results
@@ -86,10 +87,10 @@ if __name__ == '__main__':
                 write_to=log_dir)  # Initialize env
     eval_env = Monitor(eval_env, log_dir)
     eval_callback = EvalPolicyCallback(check_freq=int(n_steps), nr_evaluations=10, log_dir=log_dir, eval_env=eval_env)
+    best_reward_callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
 
 
-    callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
-    model.learn(total_timesteps=int(time_steps))#, callback=eval_callback)#
+    model.learn(total_timesteps=int(time_steps), callback=best_reward_callback)#, callback=eval_callback)#
 
     # For episode rewards, use env.get_episode_rewards()
     # env.get_episode_times() returns the wall clock time in seconds of each episode (since start)

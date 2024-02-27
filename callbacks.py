@@ -57,7 +57,7 @@ class EvalPolicyCallback(BaseCallback):
                     print(f"Saving new best model to {self.save_path}")
                 self.model.save(self.save_path)
             print("\n")
-            return True   
+        return True   
 
 
 

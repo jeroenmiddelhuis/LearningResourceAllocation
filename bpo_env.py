@@ -29,21 +29,17 @@ class BPOEnv(Env):
         #print(self.simulator.output)
         #define lows and highs for different sections of the input
         lows = np.array([0 for x in range(len(self.simulator.input))])
-
-        # Availability, busy times, assigned to, task numbers proportion, total
-        highs = np.array([1 for x in range(len(self.simulator.resources))] +\
-                         [float(len(self.simulator.task_types)) for x in range(len(self.simulator.resources))] +\
-                         [1 for x in range(len(self.simulator.task_types) - 1)]) #+\
-                         #[np.finfo(np.float64).max])/        
+        highs = np.array([1 for x in range(len(self.simulator.input))])  
         
         self.observation_space = spaces.Box(low=lows,
                                             high=highs,
                                             shape=(len(self.simulator.input),), dtype=np.float64) #observation space is the cartesian product of resources and tasks
         
         # spaces.Discrete returns a number between 0 and len(self.simulator.output)
-        self.action_space = spaces.Discrete(len(self.simulator.output)) #action space is the cartesian product of tasks and resources in their resource pool
+        self.action_space = spaces.Discrete(len(self.simulator.output)) # Action space is all possible assignments + postpone action
 
     def step(self, action):
+        # Printing statistics
         if action == len(self.simulator.output)-1:
             self.nr_postpone += 1
         self.counter += 1
@@ -55,42 +51,38 @@ class BPOEnv(Env):
             state = self.simulator.get_state()
             print(state, '\n')
 
-
         # 1 Process action
         # 2 Do the timestep
         # 3 Return reward
         # Assign one resources per iteration. If possible, another is assigned in next step without advancing simulator
-        assignment = self.simulator.output[action] # (Task X, Resource Y)
+        assignment = self.simulator.output[action] # (Resource X, Task Y)
         #print(assignment, self.simulator.state)
         if self.step_print: print('Action:\t', assignment)
-        if assignment != 'Postpone':            
+        if assignment != 'Postpone':
             assignment = (assignment[0], (next((x for x in self.simulator.available_tasks if x.task_type == assignment[1]), None)))
             self.simulator.process_assignment(assignment)
             while (sum(self.simulator.define_action_masks()) <= 1) and (self.simulator.status != 'FINISHED'):
                 self.simulator.run()
         else: # Postpone
-            self.simulator.current_reward -= self.postpone_penalty
-            unassigned_tasks =  [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] # sum of unassigned tasks per type
+            self.simulator.current_reward -= self.postpone_penalty # In case you want to penalize the agent for postponing. Default = 0
+            # Generate two arrays to check if the simulator state changes
+            unassigned_tasks =  [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types] 
             unassigned_tasks_compare = [task_sum for task_sum in unassigned_tasks]
             #print(unassigned_tasks)
             available_resources = [resource for resource in self.simulator.available_resources]
             available_resources_compare = [resource for resource in available_resources]
+            # Keep running the simulator until the state changes or the termination condition is reached
             while (self.simulator.status != 'FINISHED') and ((sum(self.simulator.define_action_masks()) <= 1) or (unassigned_tasks == unassigned_tasks_compare and \
                     available_resources == available_resources_compare)):
-                self.simulator.run()
+                self.simulator.run() # Run until next decision epoch
 
                 unassigned_tasks_compare = [sum([1 if task.task_type == el else 0 for task in self.simulator.available_tasks]) for el in self.simulator.task_types]
                 available_resources_compare = [resource for resource in self.simulator.available_resources]
 
-        reward = self.simulator.current_reward
+        reward = self.simulator.current_reward # Update reward
         self.simulator.current_reward = 0
 
         if self.simulator.status == 'FINISHED':
-            if self.simulator.reward_function == 'AUC':
-                    current_reward = (self.simulator.now - self.simulator.last_reward_moment) * len(self.simulator.uncompleted_cases)
-                    self.simulator.current_reward -= current_reward
-                    self.simulator.total_reward -= current_reward
-                    self.simulator.last_reward_moment = self.simulator.now
             return self.simulator.get_state(), reward, True, {}, {}
         else:
             return self.simulator.get_state(), reward, False, {}, {}
@@ -115,16 +107,8 @@ class BPOEnv(Env):
                       postpone_penalty=self.postpone_penalty, write_to=self.write_to)
         
         while (sum(self.simulator.define_action_masks()) <= 1):
-            self.simulator.run() # Run the simulator to get to the first decision
-            #self.simulator.state = self.simulator.get_state()
-        
-        # while (sum(self.define_action_masks()) <= 1):
-        #     self.simulator.run() # Run the simulator to get to the first decision
+            self.simulator.run() # Run the simulator to get to the first decision epoch
 
-        #self.finished = False
-        
-        #self.previous_state = self.simulator.state
-        #self.previous_mask = self.action_masks()
         return self.simulator.get_state(), {}
 
 
