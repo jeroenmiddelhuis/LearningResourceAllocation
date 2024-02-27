@@ -3,14 +3,12 @@
 This repository contains the supplementary code for the paper "Learning policies for resource allocation in business processes" (Middelhuis et al., 2024)
 
 To use the code, run the following commands to create an environment and install relevant libraries:
-```conda create -n drl_env python=3.11.4 ipython```
-```pip install gymnasium==0.29.0```
-```pip install sb3_contrib==2.0.0```
-```pip install tensorboard```
+*```conda create -n drl_env python=3.11.4```
+*```pip install gymnasium==0.29.0```
+*```pip install sb3_contrib==2.0.0```
+*```pip install tensorboard==2.15.0```
 
-The Python version used was 3.9.7. To create an environment and install required packages, use the following commands:
-* ```python -m venv env .\env\Scripts\activate``` 
-* ```python -m pip install -r requirements.txt```
+Alternatively, you can use the `requirements.txt` file to install the appropriate libraries.
 
 The following files are used to train and evaluate the models:
 * To train the DRL model, use `train_DRL.py`.
