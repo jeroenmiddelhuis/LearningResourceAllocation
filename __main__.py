@@ -8,12 +8,13 @@ import sys
 
 
 running_time = 5000
+arrival_rate = 'pattern'
 write = False
 # Original main
 def simulate_competition(model_name):
     results = []
     times = []
-    log_dir=os.getcwd() +'\\results2'
+    log_dir=os.getcwd() +'\\results_test'
     os.makedirs(log_dir, exist_ok=True)
     #log_dir=None
     for i in range(100):
@@ -22,16 +23,16 @@ def simulate_competition(model_name):
 
         # To change the planner, uncomment one of the following lines. The RLRAM planner has its own file: __main__RLRAM.py
         #planner = DedicatedResourcePlanner()
-        #planner = ShortestProcessingTime()
+        planner = ShortestProcessingTime()
         #planner = FIFO()
         #planner = Random()       
         #planner = ParkSong()
         #planner = DDQNPlanner(model_name)
-        planner = PPOPlanner(os.getcwd() + "\\tmp\\" + f"{model_name}_50000000_25600" + "\\best_model.zip")
+        #planner = PPOPlanner(os.getcwd() + "\\tmp\\" + f"{model_name}_20000000_25600" + "\\best_model.zip")
                              
         if write == False:
             log_dir = None
-        simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='AUC', write_to=log_dir)
+        simulator = Simulator(running_time, planner, config_type=f'{model_name}', reward_function='cycle_time', write_to=log_dir, arrival_rate=arrival_rate)
 
         if type(planner) == PPOPlanner or type(planner) == ParkSong or type(planner) == DDQNPlanner:
             planner.linkSimulator(simulator)
@@ -52,7 +53,7 @@ def simulate_competition(model_name):
 
 
 def main():
-    for model_name in ['n_system']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
+    for model_name in ['high_utilization']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 

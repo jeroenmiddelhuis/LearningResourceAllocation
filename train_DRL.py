@@ -28,7 +28,7 @@ from callbacks import custom_schedule, linear_schedule
 nr_layers = 2
 nr_neurons = 128
 clip_range = 0.2
-n_steps = 25600
+n_steps = 5120#25600
 batch_size = 256
 lr = 3e-05
 
@@ -45,9 +45,10 @@ if __name__ == '__main__':
     running_time = 5000
     num_cpu = 1
     load_model = False
-    config_type= 'parallel' # Config types as given in config.txt
+    config_type= 'high_utilization' # Config types as given in config.txt
     print(config_type)
     reward_function = 'cycle_time'
+    arrival_rate = 'pattern'
     postpone_penalty = 0
     time_steps = 2e7 # Total timesteps for training
     #n_steps = 25600 # Number of steps for each network update
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     # Reward functions: 'AUC', 'case_task'
     env = BPOEnv(running_time=running_time, config_type=config_type, 
                 reward_function=reward_function, postpone_penalty=postpone_penalty,
-                write_to=log_dir)  # Initialize env
+                write_to=log_dir, arrival_rate=arrival_rate)  # Initialize env
     env = Monitor(env, log_dir)
 
     resource_str = ''
@@ -73,7 +74,7 @@ if __name__ == '__main__':
  
 
     # Create the model
-    model = MaskablePPO(CustomPolicy, env, clip_range=clip_range, learning_rate=linear_schedule(lr), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
+    model = MaskablePPO(CustomPolicy, env, clip_range=clip_range, learning_rate=linear_schedule(lr), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1, ent_coef=0.01) #
 
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     best_reward_callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
 
 
-    model.learn(total_timesteps=int(time_steps), callback=best_reward_callback)#, callback=eval_callback)#
+    model.learn(total_timesteps=int(time_steps))#), callback=eval_callback)#
 
     # For episode rewards, use env.get_episode_rewards()
     # env.get_episode_times() returns the wall clock time in seconds of each episode (since start)

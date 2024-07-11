@@ -65,7 +65,7 @@ class Task:
 
 
 class Simulator:    
-    def __init__(self, running_time, planner, config_type, reward_function=None, write_to=None):
+    def __init__(self, running_time, planner, config_type, reward_function='cycle_time', write_to=None, arrival_rate=0.5):
         self.config_type = config_type
         with open(os.path.join(sys.path[0], "config.txt"), "r") as f:
             data = f.read()
@@ -97,7 +97,9 @@ class Simulator:
         self.uncompleted_cases = {}
         self.completed_cases = {}
 
-        self.mean_interarrival_time = config['mean_interarrival_time']
+        self.arrival_rate = arrival_rate
+        self.arrival_pattern = [(60, 0.01), (85, 0.4), (120, 0.95), (135, 0.6), (170, 0.93), (210, 0.6), (250, 0.01)]
+        #self.mean_interarrival_time = 1/self.arrival_rate#1.81818181#config['mean_interarrival_time']*1.81818181
         self.task_types = list(config['task_types'])
         self.resources = list(config['resources'])    
         self.resource_pools = config['resource_pools']
@@ -117,7 +119,7 @@ class Simulator:
                      [resource + '_to_task' for resource in self.resources] + \
                      [task_type for task_type in self.task_types if task_type != 'Start'] 
         self.output = [(resource, task) for task in self.task_types[1:] for resource in self.resources if resource in self.resource_pools[task]] + ['Postpone']
-
+        #print(len(self.input), len(self.output))
         self.reward_function = reward_function
         self.write_to = write_to
         self.current_reward = 0
@@ -139,7 +141,6 @@ class Simulator:
     def generate_initial_task(self, case_id):
         return self.generate_next_task(Task(self.now, case_id, 'Start'))
     
-
     def generate_next_task(self, current_task, predict=False):
         #print(current_task.task_type, self.transitions[current_task.task_type])
         if predict == False: case = self.uncompleted_cases[current_task.case_id]
@@ -216,8 +217,32 @@ class Simulator:
             self.events.append(Event(EventType.TASK_COMPLETE, self.now + pt, assignment[1], assignment[0]))
         self.events.sort()
 
-    def sample_interarrival_time(self):
-        return random.expovariate(1/self.mean_interarrival_time)
+    def find_bin_index(self, t):
+        for index, (bin_end, _) in enumerate(self.arrival_pattern):
+            if t < bin_end:
+                return index
+        return None  # or handle the case where t is outside the bins range
+
+    def sample_interarrival_time(self):        
+        if self.arrival_rate == 'pattern':
+            time = self.now % self.arrival_pattern[-1][0]
+            interarrival_time = 0
+            bin_index = self.find_bin_index(time)
+            while True:
+                rate = self.arrival_pattern[bin_index][1]
+                sampled_time = random.expovariate(self.arrival_pattern[bin_index][1])
+                if time + sampled_time <= self.arrival_pattern[bin_index][0]: # Arrival falls in the current bin
+                    interarrival_time += sampled_time
+                    return interarrival_time
+                else:
+                    if bin_index != len(self.arrival_pattern)-1:                        
+                        interarrival_time += self.arrival_pattern[bin_index][0] - time
+                        time = self.arrival_pattern[bin_index][0]
+                        bin_index += 1
+                    else:
+                        bin_index = 0
+                        time = 0
+        return random.expovariate(self.arrival_rate)
 
     def sample_processing_time(self, resource, task):
         return random.expovariate(1/self.resource_pools[task][resource][0])
@@ -301,7 +326,18 @@ class Simulator:
                             for next_task in next_tasks:
                                 next_task.parallel = True
                                 next_task.parallel_id = event.task.parallel_id
-
+                    elif self.config_type == 'dominic':
+                        if event.task.task_type in ["Start", 'Task A', 'Task B']:                            
+                            next_tasks = self.generate_next_task(event.task)
+                        elif event.task.task_type == 'Task C':
+                            if len([task for task in self.completed_tasks if task.case_id == event.task.case_id and task.task_type in ['Task D', 'Task E']]) == 2:
+                                next_tasks = self.generate_next_task(event.task)
+                        elif event.task.task_type == 'Task D':
+                            if len([task for task in self.completed_tasks if task.case_id == event.task.case_id and task.task_type in ['Task C', 'Task E']]) == 2:
+                                next_tasks = self.generate_next_task(event.task)
+                        elif event.task.task_type == 'Task E':
+                            if len([task for task in self.completed_tasks if task.case_id == event.task.case_id and task.task_type in ['Task C', 'Task D']]) == 2:
+                                next_tasks = self.generate_next_task(event.task)
                     else:
                         # If the completed task is a parallel task and other parallel tasks are still being processed, then wait for completion
                         if event.task.parallel == True:
@@ -354,6 +390,12 @@ class Simulator:
 
         if self.now > self.running_time:
             self.status = "FINISHED"
+            total_CT = 0
+            for case in self.completed_cases.values():
+                cycle_time = case.departure_time - case.arrival_time
+                total_CT += cycle_time
+
+            
             for event in self.events:
                 if event.event_type == EventType.TASK_COMPLETE:
                     self.resource_total_busy_time[event.resource] += self.running_time - self.resource_last_start[event.resource]
@@ -361,6 +403,7 @@ class Simulator:
             # Uncomment to include the cycle time of uncompleted cases
             for case in self.uncompleted_cases.values():
                 cycle_time = self.running_time - case.arrival_time
+                total_CT += cycle_time
                 self.sumx += cycle_time
                 self.sumxx += cycle_time * cycle_time
                 self.sumw += 1
@@ -369,6 +412,7 @@ class Simulator:
             print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
             print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
             print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
+            print(f'Total cycle time: {total_CT}')
             
             if self.write_to != None:
                 utilisation = [busy_time/self.running_time for resource, busy_time in self.resource_total_busy_time.items()]
