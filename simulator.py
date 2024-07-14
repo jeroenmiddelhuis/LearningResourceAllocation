@@ -5,6 +5,7 @@ from enum import Enum, auto
 from collections import deque
 import random
 import json
+import pickle
 
 class Event:
     def __init__(self, event_type, moment, task=None, resource=None):
@@ -98,12 +99,21 @@ class Simulator:
         self.completed_cases = {}
 
         self.arrival_rate = arrival_rate
-        self.arrival_pattern = [(60, 0.01), (85, 0.4), (120, 0.95), (135, 0.6), (170, 0.93), (210, 0.6), (250, 0.01)]
+        self.arrival_pattern = [(73, 0.01), (85, 0.5), (120, 1.15), (135, 0.8), (168, 1.15), (175, 0.4), (209, 0.73), (250, 0.01)]#[(10, 0.01), (35, 0.2), (90, 0.75), (115, 0.5), (160, 0.75), (175, 0.25), (225, 0.47), (240, 0.01)]
         #self.mean_interarrival_time = 1/self.arrival_rate#1.81818181#config['mean_interarrival_time']*1.81818181
         self.task_types = list(config['task_types'])
         self.resources = list(config['resources'])    
         self.resource_pools = config['resource_pools']
         self.transitions = config['transitions']
+
+        # KDE plot based on the BPI12 dataset and parameters to scale the rate to lambda=0.5
+        with open('kde_model.pkl', 'rb') as file:
+            self.kde = pickle.load(file)
+        self.kde_max_rate = 2.5164926873799365
+        self.kde_mean = 1.4284215305048689
+        self.kde_max_rate_scaled = 0.8808648685414641
+
+
 
         # self.task_types = sorted(list(self.task_types))
         # self.resources = sorted(list(set(np.hstack(list(self.resources))))) 
@@ -225,23 +235,33 @@ class Simulator:
 
     def sample_interarrival_time(self):        
         if self.arrival_rate == 'pattern':
-            time = self.now % self.arrival_pattern[-1][0]
-            interarrival_time = 0
-            bin_index = self.find_bin_index(time)
+            next_arrival_time = self.now
             while True:
-                rate = self.arrival_pattern[bin_index][1]
-                sampled_time = random.expovariate(self.arrival_pattern[bin_index][1])
-                if time + sampled_time <= self.arrival_pattern[bin_index][0]: # Arrival falls in the current bin
-                    interarrival_time += sampled_time
-                    return interarrival_time
-                else:
-                    if bin_index != len(self.arrival_pattern)-1:                        
-                        interarrival_time += self.arrival_pattern[bin_index][0] - time
-                        time = self.arrival_pattern[bin_index][0]
-                        bin_index += 1
-                    else:
-                        bin_index = 0
-                        time = 0
+                scaled_time = 0.2 + (next_arrival_time % 250 - 0) * (0.9 - 0.2) / (250 - 0)
+                rate = self.kde(scaled_time) / self.kde_mean * 0.5 # Multiply by 0.5 so that the average rate is 0.5
+                #print(next_arrival_time, scaled_time, scaled_time, rate)
+                next_arrival_time += random.expovariate(self.kde_max_rate_scaled)
+                if rate[0]/self.kde_max_rate_scaled > random.random():
+                    #print(next_arrival_time - self.now, self.now, '\n')
+                    return next_arrival_time - self.now # interarrival time
+
+            # time = self.now % self.arrival_pattern[-1][0]
+            # interarrival_time = 0
+            # bin_index = self.find_bin_index(time)
+            # while True:
+            #     rate = self.arrival_pattern[bin_index][1]
+            #     sampled_time = random.expovariate(self.arrival_pattern[bin_index][1])
+            #     if time + sampled_time <= self.arrival_pattern[bin_index][0]: # Arrival falls in the current bin
+            #         interarrival_time += sampled_time
+            #         return interarrival_time
+            #     else:
+            #         if bin_index != len(self.arrival_pattern)-1:                        
+            #             interarrival_time += self.arrival_pattern[bin_index][0] - time
+            #             time = self.arrival_pattern[bin_index][0]
+            #             bin_index += 1
+            #         else:
+            #             bin_index = 0
+            #             time = 0
         return random.expovariate(self.arrival_rate)
 
     def sample_processing_time(self, resource, task):
@@ -408,11 +428,11 @@ class Simulator:
                 self.sumxx += cycle_time * cycle_time
                 self.sumw += 1
 
-            print(f'Uncompleted cases: {len(self.uncompleted_cases)}')
+            print(f'Uncompleted cases: {len(self.uncompleted_cases)}. Completed cases: {len(self.completed_cases)}.')
             print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
             print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
             print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
-            print(f'Total cycle time: {total_CT}')
+            print(f'Total cycle time: {total_CT}\n')
             
             if self.write_to != None:
                 utilisation = [busy_time/self.running_time for resource, busy_time in self.resource_total_busy_time.items()]

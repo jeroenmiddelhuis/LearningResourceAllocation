@@ -28,7 +28,7 @@ from callbacks import custom_schedule, linear_schedule
 nr_layers = 2
 nr_neurons = 128
 clip_range = 0.2
-n_steps = 5120#25600
+n_steps = 25600
 batch_size = 256
 lr = 3e-05
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     running_time = 5000
     num_cpu = 1
     load_model = False
-    config_type= 'high_utilization' # Config types as given in config.txt
+    config_type= 'slow_server' # Config types as given in config.txt
     print(config_type)
     reward_function = 'cycle_time'
     arrival_rate = 'pattern'
@@ -74,14 +74,14 @@ if __name__ == '__main__':
  
 
     # Create the model
-    model = MaskablePPO(CustomPolicy, env, clip_range=clip_range, learning_rate=linear_schedule(lr), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1, ent_coef=0.01) #
+    model = MaskablePPO(CustomPolicy, env, clip_range=clip_range, learning_rate=linear_schedule(lr), n_steps=int(n_steps), batch_size=batch_size, gamma=0.999, verbose=1) #
 
     #Logging to tensorboard. To access tensorboard, open a bash terminal in the projects directory, activate the environment (where tensorflow should be installed) and run the command in the following line
     # tensorboard --logdir ./tmp/
     # then, in a browser page, access localhost:6006 to see the board
     model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
 
-
+    # 40
     # Train the agent
     eval_env = BPOEnv(running_time=running_time, config_type=config_type, 
                 reward_function=reward_function, postpone_penalty=postpone_penalty,

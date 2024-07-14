@@ -23,8 +23,8 @@ def simulate_competition(model_name):
 
         # To change the planner, uncomment one of the following lines. The RLRAM planner has its own file: __main__RLRAM.py
         #planner = DedicatedResourcePlanner()
-        planner = ShortestProcessingTime()
-        #planner = FIFO()
+        #planner = ShortestProcessingTime()
+        planner = FIFO()
         #planner = Random()       
         #planner = ParkSong()
         #planner = DDQNPlanner(model_name)
@@ -53,7 +53,7 @@ def simulate_competition(model_name):
 
 
 def main():
-    for model_name in ['high_utilization']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
+    for model_name in ['slow_server']:#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel']:#,
         simulate_competition(model_name)#['n_system', 'down_stream', 'high_utilization', 'low_utilization', 'slow_server', 'parallel', 
         print('\n')
 
