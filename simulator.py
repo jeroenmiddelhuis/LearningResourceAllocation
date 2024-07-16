@@ -428,11 +428,11 @@ class Simulator:
                 self.sumxx += cycle_time * cycle_time
                 self.sumw += 1
 
-            print(f'Uncompleted cases: {len(self.uncompleted_cases)}. Completed cases: {len(self.completed_cases)}.')
-            print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
-            print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
-            print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
-            print(f'Total cycle time: {total_CT}\n')
+            # print(f'Uncompleted cases: {len(self.uncompleted_cases)}. Completed cases: {len(self.completed_cases)}.')
+            # print(f'Resource utilisation: {[(resource, busy_time/self.running_time) for resource, busy_time in self.resource_total_busy_time.items()]}')
+            # print(f'Total reward: {self.total_reward}. Total CT: {self.sumx}')
+            # print(f'Mean cycle time: {self.sumx/self.sumw}. Standard deviation: {np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}')
+            # print(f'Total cycle time: {total_CT}\n')
             
             if self.write_to != None:
                 utilisation = [busy_time/self.running_time for resource, busy_time in self.resource_total_busy_time.items()]
@@ -443,7 +443,7 @@ class Simulator:
                     with open(self.write_to + f'\\{self.planner}_{self.config_type}.txt', "a") as file:
                         file.write(f"{len(self.uncompleted_cases)},{resource_str}{self.total_reward},{self.sumx/self.sumw},{np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}\n")
 
-            return len(self.uncompleted_cases),self.total_reward,self.sumx/self.sumw,np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)
+            return len(self.uncompleted_cases),self.total_reward,self.sumx/self.sumw,np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw), utilisation
         
 
 

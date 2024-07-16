@@ -1,11 +1,11 @@
 from simulator import Simulator
-from planners import GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner, PPOPlanner, Bayes_planner
+from planners import  ShortestProcessingTime, PPOPlanner, Bayes_planner # GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner,
 import pandas as pd
 
-running_time = 5000
+running_time = 1500
 import numpy as np
 import pickle as pkl
-
+import os
 
 # You can build your bayesian optimization model around this framework:
 # -Determine parameters for the planner
@@ -13,7 +13,7 @@ import pickle as pkl
 # -Get the total_reward
 def simulate_competition(A):
 
-    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='slow_server', reward_function='AUC')
+    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='low_utilization', reward_function='AUC')
     a1 = A[0]
     a2 = A[1]
     a3 = A[2]
@@ -21,12 +21,11 @@ def simulate_competition(A):
     a5 = A[4]
     a6 = A[5]
     a7 = A[6]
-    print(a1, a2, a3, a4, a5, a6, a7)
+    # print(a1, a2, a3, a4, a5, a6, a7)
     planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7,simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
-    planner1 = ShortestProcessingTime()
-
+    log_dir = os.getcwd() + '\\results_test'
     # The config types dictates the system
-    simulator = Simulator(running_time, planner, config_type='slow_server', reward_function='AUC')
+    simulator = Simulator(running_time, planner, config_type='low_utilization', reward_function='AUC', arrival_rate=0.45, write_to=log_dir)
     # You can access some proporties from the simulation:
     # simulator.resource_pools: for each tasks 1) the resources that can process it and 2) the mean and variance of the processing time of that assignment
     # simulator.mean_interarrival_time
@@ -38,8 +37,8 @@ def simulate_competition(A):
 
     # You should want to optimize the total_reward, this is related to the mean cycle time, however the total reward also includes uncompleted casese
     # Total reward = total cycle time
-    nr_uncompleted_cases, total_reward, CT_mean, CT_std, = simulator.run()
-    print('stop')
+    nr_uncompleted_cases, total_reward, CT_mean, CT_std, utilisation = simulator.run()
+    # print('CT_mean: ', CT_mean)
 
     return CT_mean
 
@@ -51,14 +50,14 @@ def aggregate_sims(A):
     np.random.seed(seed)
     model_num = np.random.randint(0, 1000)
     tot_res = []
-
+    print(A)
     for ind in range(20):
         res = simulate_competition(A)
-        print(res)
+        # print(res)
         tot_res.append(res)
         # pkl.dump(tot_res, open('run_500_res_simple_linear_high_utilisation3_' + str(model_num) + '.pkl', 'wb'))
-
-    return tot_res #np.array(tot_res).mean()
+    print(np.array(tot_res).mean())
+    return np.array(tot_res).mean()  #tot_res #
 
 
 def main():
@@ -86,7 +85,7 @@ def main():
     model_num = np.random.randint(0, 1000)
 
 
-    pkl.dump(get_results, open(str(model_num) + '_final_slow_server.pkl', 'wb'))
+    pkl.dump(get_results, open(str(model_num) + '_final_complete.pkl', 'wb'))
 
 
 if __name__ == "__main__":

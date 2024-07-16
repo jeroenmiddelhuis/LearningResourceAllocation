@@ -8,7 +8,8 @@ import sys
 
 
 running_time = 5000
-arrival_rate = 'pattern'
+arrival_rate = 0.45
+print(arrival_rate)
 write = False
 # Original main
 def simulate_competition(model_name):

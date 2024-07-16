@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import List
 import pandas as pd
-from sb3_contrib import MaskablePPO
+# from sb3_contrib import MaskablePPO
 
 
 class Planner(ABC):
@@ -23,6 +23,43 @@ class Planner(ABC):
             at which the resource must be assigned to the task (typically, this can also be :attr:`.Simulator.now`).
         """
         raise NotImplementedError
+
+
+class ShortestProcessingTime(Planner):
+    def __str__(self) -> str:
+        return 'ShortestProcessingTime'
+
+    def __init__(self):
+        self.resource_pools = None # passed through simulator
+
+    def get_possible_assignments(self, available_tasks, available_resources, resource_pools):
+        possible_assignments = []
+        for task_type in set([task.task_type for task in available_tasks]):
+            for resource in available_resources:
+                if resource in resource_pools[task_type]:
+                    possible_assignments.append((resource, task_type))
+        return list(set(possible_assignments))
+
+    def plan(self, available_tasks, available_resources, resource_pools):
+        available_tasks = available_tasks.copy()
+        available_resources = available_resources.copy()
+        assignments = []
+
+        possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+        while len(possible_assignments) > 0:
+            spt = 999999
+            for assignment in possible_assignments: #assignment[0] = task, assignment[1]= resource
+                processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
+                if processing_time < spt:
+                    spt = processing_time
+                    best_assignment = assignment
+
+            assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
+            available_tasks.remove(assignment[1])
+            available_resources.remove(assignment[0])
+            assignments.append(assignment)
+            possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+        return assignments
 
 
 class Bayes_planner(Planner):

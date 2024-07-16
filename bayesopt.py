@@ -40,15 +40,15 @@ def main():
     res = gp_minimize(aggregate_sims,  # the function to minimize
                       space,  # the bounds on each dimension of x
                       acq_func="EI",  # the acquisition function
-                      n_calls=15,  # the number of evaluations of f
-                      n_random_starts=3,  # the number of random initialization points
+                      n_calls=3,  # the number of evaluations of f
+                      n_random_starts=2,  # the number of random initialization points
                       noise=0.1 ** 2,  # the noise level (optional)
                       random_state=1234)
 
 
     model_num = np.random.randint(0, 100000)
 
-    pkl.dump((res.func_vals, res.x_iters), open(str(model_num) + '_res_complete_all.pkl', 'wb'))
+    pkl.dump((res.func_vals, res.x_iters), open(str(model_num) + 'arrival_rate_' +str(0.45) +'_low_utilization.pkl', 'wb'))
 
 
 
