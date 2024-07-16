@@ -34,7 +34,7 @@ def main():
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
     np.random.seed(seed + 2)
 
-    arrival_rate = 0.45
+    arrival_rate =  0.45
 
     A_vals = [1.209298, 4.898732, 0.496618, 2.658753, 2.234656, 12.339795, 2000]
 
