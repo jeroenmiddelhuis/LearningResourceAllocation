@@ -30,6 +30,10 @@ def main():
 
     # Bounded region of parameter space
 
+    cur_time = int(time.time())
+    seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
+    np.random.seed(seed + 2)
+
     space = [Real(0, 20, name='a1'),
              Real(0, 20, name='a2'),
              Real(0, 20, name='a3'),
@@ -44,7 +48,7 @@ def main():
                       n_calls=15,  # the number of evaluations of f
                       n_random_starts=3,  # the number of random initialization points
                       noise=0.1 ** 2,  # the noise level (optional)
-                      random_state=1234)
+                      random_state=seed)
 
 
     model_num = np.random.randint(0, 100000)
