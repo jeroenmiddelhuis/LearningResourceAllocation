@@ -33,6 +33,7 @@ def main():
     cur_time = int(time.time())
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
     np.random.seed(seed + 2)
+
     arrival_rate = 0.45
 
 
