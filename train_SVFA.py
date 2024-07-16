@@ -25,7 +25,7 @@ def simulate_competition(A):
     planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7,simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
     log_dir = os.getcwd() + '\\results_test'
     # The config types dictates the system
-    simulator = Simulator(running_time, planner, config_type='low_utilization', reward_function='AUC', arrival_rate=0.5, write_to=log_dir)
+    simulator = Simulator(running_time, planner, config_type='low_utilization', reward_function='AUC', arrival_rate=0.45, write_to=log_dir)
     # You can access some proporties from the simulation:
     # simulator.resource_pools: for each tasks 1) the resources that can process it and 2) the mean and variance of the processing time of that assignment
     # simulator.mean_interarrival_time

@@ -33,6 +33,8 @@ def main():
     cur_time = int(time.time())
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
     np.random.seed(seed + 2)
+    arrival_rate = 0.45
+
 
     space = [Real(0, 20, name='a1'),
              Real(0, 20, name='a2'),
@@ -53,7 +55,7 @@ def main():
 
     model_num = np.random.randint(0, 100000)
 
-    pkl.dump((res.func_vals, res.x_iters), open(str(model_num) + 'arrival_rate_' +str(0.45) +'_low_utilization.pkl', 'wb'))
+    pkl.dump((res.func_vals, res.x_iters), open(str(model_num) + 'arrival_rate_' +str(str(arrival_rate)) +'_low_utilization.pkl', 'wb'))
 
 
 
