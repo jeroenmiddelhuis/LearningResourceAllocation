@@ -2,7 +2,7 @@ from simulator import Simulator
 from planners import  ShortestProcessingTime, PPOPlanner, Bayes_planner # GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner,
 import pandas as pd
 
-running_time = 1500
+running_time = 5000
 import numpy as np
 import pickle as pkl
 import os
@@ -55,7 +55,7 @@ def aggregate_sims(A):
         res = simulate_competition(A)
         # print(res)
         tot_res.append(res)
-        # pkl.dump(tot_res, open('run_500_res_simple_linear_high_utilisation3_' + str(model_num) + '.pkl', 'wb'))
+        pkl.dump(tot_res, open('low_utilization_iter_'+ str(ind+1)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
     print(np.array(tot_res).mean())
     return np.array(tot_res).mean()  #tot_res #
 
