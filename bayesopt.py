@@ -36,14 +36,16 @@ def main():
 
     arrival_rate = 0.45
 
+    A_vals = [1.209298, 4.898732, 0.496618, 2.658753, 2.234656, 12.339795, 2000]
 
-    space = [Real(0, 20, name='a1'),
-             Real(0, 20, name='a2'),
-             Real(0, 20, name='a3'),
-             Real(0, 20, name='a4'),
-             Real(0, 20, name='a5'),
-             Real(0, 20, name='a6'),
-             Real(0, 20, name='a7')]
+
+    space = [Real(A_vals[0]-0.5, A_vals[0]+0.5, name='a1'),
+             Real(A_vals[1]-0.5, A_vals[1]+0.5, name='a2'),
+             Real(A_vals[2]-0.5, A_vals[2]+0.5, name='a3'),
+             Real(A_vals[3]-0.5, A_vals[3]+0.5, name='a4'),
+             Real(A_vals[4]-0.5, A_vals[4]+0.5, name='a5'),
+             Real(A_vals[5]-0.5, A_vals[5]+0.5, name='a6'),
+             Real(A_vals[6]-0.5, A_vals[6]+0.5, name='a7')]
 
     res = gp_minimize(aggregate_sims,  # the function to minimize
                       space,  # the bounds on each dimension of x
