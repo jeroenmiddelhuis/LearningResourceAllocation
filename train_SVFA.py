@@ -55,8 +55,9 @@ def aggregate_sims(A):
         res = simulate_competition(A)
         # print(res)
         tot_res.append(res)
-        pkl.dump(tot_res, open('low_utilization_iter_'+ str(ind+1)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
+
     print(np.array(tot_res).mean())
+    pkl.dump((tot_res,A), open('low_utilization' + '_model_num_' + str(model_num) + '.pkl', 'wb'))
     return np.array(tot_res).mean()  #tot_res #
 
 
