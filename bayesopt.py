@@ -56,7 +56,7 @@ def main():
 
     model_num = np.random.randint(0, 100000)
 
-    pkl.dump((res.func_vals, res.x_iters), open('eliran_results/' + str(model_num) + 'arrival_rate_' +str(str(arrival_rate)) +'_low_utilization.pkl', 'wb'))
+    pkl.dump((res.func_vals, res.x_iters), open('./eliran_results/' + str(model_num) + 'arrival_rate_' +str(str(arrival_rate)) +'_low_utilization.pkl', 'wb'))
 
 
 
