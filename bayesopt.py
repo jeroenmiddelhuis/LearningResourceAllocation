@@ -39,8 +39,6 @@ import pandas as pd
 
 
 
-
-
 listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
 # listis = ['complete_parallel', 'complete_reversed', 'complete']
 configtype = np.random.choice(listis)
