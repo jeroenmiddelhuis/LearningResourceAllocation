@@ -42,12 +42,13 @@ import pandas as pd
 
 
 listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
+# listis = ['complete_parallel', 'complete_reversed', 'complete']
 configtype = np.random.choice(listis)
 # configtype = 'low_utilization'
 # configtype = 'complete_reversed'
 
 arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]
-arrival_rate = np.random.choice(listis)
+arrival_rate = np.random.choice(arrival_list)
 # arrival_rate = 0.5
 
 print(arrival_rate, configtype)
@@ -104,7 +105,7 @@ def aggregate_sims1(A):
         tot_res.append(res)
 
     print(np.array(tot_res).mean())
-    # pkl.dump((tot_res,A), open('./eliran_results/'+configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
+    pkl.dump((tot_res,A), open('./eliran_results/' + configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
     return np.array(tot_res).mean()  #tot_res #
 
 
@@ -119,8 +120,6 @@ def main():
     print(arrival_rate)
 
 
-
-
     if configtype == 'low_utilization':
         A_vals = [1.209298, 4.898732, 0.496618, 2.658753, 2.234656, 12.339795, 200000]
     elif configtype == 'high_utilization':
@@ -129,7 +128,7 @@ def main():
         A_vals = [1.655077, 4.013198,0.491260, 0.279967, 2.213313, 7.287871, 2000000]
     elif configtype == 'n_system':
         A_vals = [0.000000,	5.000000,	1.584558,	0.000000,	0.000000	, 7.0, 200000]
-    elif configtype == 'slow':
+    elif configtype == 'slow_server':
         A_vals = [5.000000, 3.767883, 0.0, 1.645102, 0.000000, 20.000000, 2000000]
     elif configtype == 'complete_all':
         A_vals= [0.337376 ,   4.110818,    1.167821,    0.862430 ,   0.474204 ,   19.111311, 20000000]
