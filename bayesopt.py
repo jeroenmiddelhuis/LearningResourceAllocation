@@ -105,7 +105,7 @@ def aggregate_sims1(A):
         tot_res.append(res)
 
     print(np.array(tot_res).mean())
-    pkl.dump((tot_res,A), open('./eliran_results/' + configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
+    # pkl.dump((tot_res,A), open('./eliran_results/' + configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
     return np.array(tot_res).mean()  #tot_res #
 
 
