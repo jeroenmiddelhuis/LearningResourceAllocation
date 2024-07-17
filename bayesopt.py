@@ -45,8 +45,10 @@ configtype = np.random.choice(listis)
 # configtype = 'low_utilization'
 # configtype = 'complete_reversed'
 
-arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6]
+arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 'pattern']
 arrival_rate = np.random.choice(arrival_list)
+# arrival_rate = 'pattern'
+
 # arrival_rate = 0.5
 
 print(arrival_rate, configtype)
