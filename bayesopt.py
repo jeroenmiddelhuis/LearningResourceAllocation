@@ -39,17 +39,19 @@ import pandas as pd
 
 
 
-listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
-# listis = ['complete_parallel', 'complete_reversed', 'complete']
+# listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
+listis = ['complete_parallel', 'complete_reversed', 'complete']
 configtype = np.random.choice(listis)
 # configtype = 'low_utilization'
 # configtype = 'complete_reversed'
 
 arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 'pattern']
+arrival_list = [0.55, 0.6, 'pattern']
+
 arrival_rate = np.random.choice(arrival_list)
 # arrival_rate = 'pattern'
 
-# arrival_rate = 0.5
+# arrival_rate = 0.6
 
 print(arrival_rate, configtype)
 # You can build your bayesian optimization model around this framework:
@@ -105,7 +107,7 @@ def aggregate_sims1(A):
         tot_res.append(res)
 
     print(np.array(tot_res).mean())
-    # pkl.dump((tot_res,A), open('./eliran_results/' + configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
+    pkl.dump((tot_res,A), open('./eliran_results/' + configtype + '_arrival_rate_' +str(arrival_rate)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
     return np.array(tot_res).mean()  #tot_res #
 
 
@@ -148,13 +150,13 @@ def main():
                          14.291515667953812, 377.12721840056307]
 
 
-    space = [Real(max(0,A_vals[0]-0.5), A_vals[0]+1, name='a1'),
-             Real(max(0,A_vals[1]-0.5), A_vals[1]+1, name='a2'),
-             Real(max(0,A_vals[2]-0.5), A_vals[2]+1, name='a3'),
-             Real(max(0,A_vals[3]-0.5), A_vals[3]+1.5, name='a4'),
-             Real(max(0,A_vals[4]-0.5), A_vals[4]+1.5, name='a5'),
-             Real(max(0,A_vals[5]-0.5), A_vals[5]+1.5, name='a6'),
-             Real(max(0,A_vals[6]-0.5), A_vals[6]+1.5, name='a7')]
+    space = [Real(max(0,A_vals[0]-1.5), A_vals[0]+1.5, name='a1'),
+             Real(max(0,A_vals[1]-1.5), A_vals[1]+1.5, name='a2'),
+             Real(max(0,A_vals[2]-1.5), A_vals[2]+1.5, name='a3'),
+             Real(max(0,A_vals[3]-1.5), A_vals[3]+1.5, name='a4'),
+             Real(max(0,A_vals[4]-1.5), A_vals[4]+1.5, name='a5'),
+             Real(max(0,A_vals[5]-1.5), A_vals[5]+1.5, name='a6'),
+             Real(max(0,A_vals[6]-1.5), A_vals[6]+1.5, name='a7')]
 
 
 
