@@ -43,6 +43,7 @@ files = os.listdir(path)
 
 truefiles = [file for file in files if 'config' in file]
 
+
 df = pd.DataFrame([])
 for file in truefiles:
     vals = pkl.load(open(os.path.join(path,file), 'rb'))
