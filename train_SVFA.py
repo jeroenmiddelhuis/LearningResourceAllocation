@@ -23,7 +23,7 @@ try:
     A7 = df_test.loc[ind, 'A7']
 
 except:
-    print('cant find file')
+    print('cant find file ')
 
 # You can build your bayesian optimization model around this framework:
 # -Determine parameters for the planner
