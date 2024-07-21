@@ -2,7 +2,7 @@ from simulator import Simulator
 from planners import  ShortestProcessingTime, PPOPlanner, Bayes_planner # GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner,
 import pandas as pd
 
-running_time = 50
+running_time = 5000
 import numpy as np
 import pickle as pkl
 import os
