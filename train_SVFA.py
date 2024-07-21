@@ -2,10 +2,25 @@ from simulator import Simulator
 from planners import  ShortestProcessingTime, PPOPlanner, Bayes_planner # GreedyPlanner, ShortestProcessingTime, DedicatedResourcePlanner,
 import pandas as pd
 
-running_time = 5000
+running_time = 50
 import numpy as np
 import pickle as pkl
 import os
+import pandas as pd
+
+df_test = pkl.load(open('/home/eliransc/notebooks/bpo/final_training_results.pkl', 'rb'))
+df_test = df_test.reset_index()
+ind = np.random.choice(np.arange(df_test.shape[0]))
+arrival_rate = df_test.loc[ind, 'arrival_rate']
+configtype = df_test.loc[ind, 'config']
+A1 = df_test.loc[ind, 'A1']
+A2 = df_test.loc[ind, 'A2']
+A3 = df_test.loc[ind, 'A3']
+A4 = df_test.loc[ind, 'A4']
+A5 = df_test.loc[ind, 'A5']
+A6 = df_test.loc[ind, 'A6']
+A7 = df_test.loc[ind, 'A7']
+
 
 # You can build your bayesian optimization model around this framework:
 # -Determine parameters for the planner
@@ -13,7 +28,8 @@ import os
 # -Get the total_reward
 def simulate_competition(A):
 
-    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='low_utilization', reward_function='AUC')
+    simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type=configtype, reward_function='AUC')
+    # simulator_fake = Simulator(running_time, ShortestProcessingTime(), config_type='complete', reward_function='AUC')
     a1 = A[0]
     a2 = A[1]
     a3 = A[2]
@@ -25,7 +41,8 @@ def simulate_competition(A):
     planner = Bayes_planner(a1, a2, a3, a4, a5, a6,a7,simulator_fake)  # ShortestProcessingTime() # Insert your planner here, input can be the parameters of your model
     log_dir = os.getcwd() + '\\results_test'
     # The config types dictates the system
-    simulator = Simulator(running_time, planner, config_type='low_utilization', reward_function='AUC', arrival_rate=0.45, write_to=log_dir)
+    simulator = Simulator(running_time, planner, config_type=configtype, reward_function='AUC', arrival_rate=arrival_rate, write_to=log_dir)
+    # simulator = Simulator(running_time, planner, config_type='complete', reward_function='AUC', arrival_rate=0.45, write_to=log_dir)
     # You can access some proporties from the simulation:
     # simulator.resource_pools: for each tasks 1) the resources that can process it and 2) the mean and variance of the processing time of that assignment
     # simulator.mean_interarrival_time
@@ -40,12 +57,20 @@ def simulate_competition(A):
     nr_uncompleted_cases, total_reward, CT_mean, CT_std, utilisation = simulator.run()
     # print('CT_mean: ', CT_mean)
 
+    import time
+    cur_time = int(time.time())
+    seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
+    np.random.seed(seed)
+    model_num = np.random.randint(0, 1000)
+
+
+    pkl.dump((nr_uncompleted_cases, total_reward, CT_mean, CT_std, utilisation),
+             open(str(model_num) + '_finalQ' + configtype + '_arrival_rate_Q' + str(arrival_rate) + '.pkl', 'wb'))
     return CT_mean
 
 
-def aggregate_sims(A, bb):
+def aggregate_sims(A):
 
-    print(bb)
     import time
     cur_time = int(time.time())
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
@@ -53,14 +78,14 @@ def aggregate_sims(A, bb):
     model_num = np.random.randint(0, 1000)
     tot_res = []
     print(A)
-    for ind in range(20):
+    for ind in range(100):
         res = simulate_competition(A)
         print(res)
         # print(res)
         tot_res.append(res)
 
     print(np.array(tot_res).mean())
-    pkl.dump((tot_res, A), open('./eliran_results/low_utilization' + '_arrival_rate_' +str(0.45)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
+    # pkl.dump((tot_res, A), open('./eliran_results/low_utilization' + '_arrival_rate_' +str(0.45)+'_model_num_' + str(model_num) + '.pkl', 'wb'))
     return np.array(tot_res).mean()  #tot_res #
 
 
@@ -80,7 +105,10 @@ def main():
 
     # simulate_competition(A)
 
-    get_results = aggregate_sims([1.209298, 4.898732,	0.496618, 2.658753,	2.234656,12.339795, 2000])
+
+
+    get_results = aggregate_sims([A1, A2, A3, A4, A5, A6, A7])
+    # get_results = aggregate_sims(low_utilization)
 
     import time
     cur_time = int(time.time())
@@ -89,7 +117,7 @@ def main():
     model_num = np.random.randint(0, 1000)
 
 
-    pkl.dump(get_results, open(str(model_num) + '_final_complete.pkl', 'wb'))
+    # pkl.dump(get_results, open(str(model_num) + '_finalQ'+configtype+'_arrival_rate_Q' +str(arrival_rate)+'.pkl', 'wb'))
 
 
 if __name__ == "__main__":
