@@ -72,9 +72,7 @@ for arrival_rate in df['arrival_rate'].unique():
                 dict_left[ind] = (float(arrival_rate), config)
             ind += 1
 
-left_to_train = [('pattern', 'parallel'), (0.3, 'slow'), (0.55, 'high'), (0.55, 'parallel'), (0.55, 'slow'), (0.4, 'down'), (0.45, 'high'), (0.45, 'slow')]
-
-choose_dict  = np.random.choice(np.arange(len(list(dict_left.keys()))))
+choose_dict = np.random.choice(np.arange(len(list(dict_left.keys()))))
 
 arrival_rate, configtype = dict_left[choose_dict]
 
