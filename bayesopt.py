@@ -38,17 +38,57 @@ import pandas as pd
 #'complete_parallel', 'complete_reversed', 'complete',
 
 
+path = '/home/eliransc/projects/def-dkrass/eliransc/LearningResourceAllocation/eliran_results'
+files = os.listdir(path)
+
+truefiles = [file for file in files if 'config' in file]
+
+df = pd.DataFrame([])
+for file in truefiles:
+    vals = pkl.load(open(os.path.join(path,file), 'rb'))
+    curr_ind = df.shape[0]
+    df.loc[curr_ind, 'arrival_rate'] = file.split('_')[2]
+    df.loc[curr_ind, 'config'] =  file.split('_')[4]
+    if file.split('_')[4] == 'n':
+        df.loc[curr_ind, 'config'] = 'n_system'
+    if 'pkl' in file.split('_')[4]:
+        df.loc[curr_ind, 'config']  = file.split('_')[4].split('.')[0]
+    df.loc[curr_ind, 'mean_cycle'] = vals[0].min()
+    weights = vals[1][vals[0].argmin()]
+    for ind, weight in enumerate(weights):
+        df.loc[curr_ind, 'A'+str(ind+1)] = weight
+
+dict_left = {}
+ind = 0
+for arrival_rate in df['arrival_rate'].unique():
+    for config in df['config'].unique():
+        # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+
+        if df.loc[(df['arrival_rate'] == arrival_rate) & (df['config'] == config), :].shape[0] == 0:
+            print(arrival_rate, config)
+            if arrival_rate == 'pattern':
+                dict_left[ind] = (arrival_rate, config)
+            else:
+                dict_left[ind] = (float(arrival_rate), config)
+            ind += 1
+
+left_to_train = [('pattern', 'parallel'), (0.3, 'slow'), (0.55, 'high'), (0.55, 'parallel'), (0.55, 'slow'), (0.4, 'down'), (0.45, 'high'), (0.45, 'slow')]
+
+choose_dict  = np.random.choice(np.arange(len(list(dict_left.keys()))))
+
+arrival_rate, configtype = dict_left[choose_dict]
+
 
 # listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
-listis = ['complete_parallel', 'complete_reversed', 'complete']
-configtype = np.random.choice(listis)
+# listis = ['complete_parallel', 'complete_reversed', 'complete']
+# configtype = np.random.choice(listis)
 # configtype = 'low_utilization'
 # configtype = 'complete_reversed'
 
-arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 'pattern']
-arrival_list = [0.55, 0.6, 'pattern']
+# arrival_list = [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 'pattern']
+# arrival_list = [0.55, 0.6, 'pattern']
 
-arrival_rate = np.random.choice(arrival_list)
+# arrival_rate = np.random.choice(arrival_list)
 # arrival_rate = 'pattern'
 
 # arrival_rate = 0.6
