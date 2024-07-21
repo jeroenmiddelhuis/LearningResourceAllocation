@@ -58,6 +58,8 @@ for file in truefiles:
     for ind, weight in enumerate(weights):
         df.loc[curr_ind, 'A'+str(ind+1)] = weight
 
+print(df.shape)
+
 dict_left = {}
 ind = 0
 for arrival_rate in df['arrival_rate'].unique():
