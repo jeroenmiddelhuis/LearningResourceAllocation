@@ -12,15 +12,15 @@ try:
     df_test = pkl.load(open('/home/eliransc/notebooks/bpo/final_training_results.pkl', 'rb'))
     df_test = df_test.reset_index()
     ind = np.random.choice(np.arange(df_test.shape[0]))
-    arrival_rate = df_test.loc[ind, 'arrival_rate']
+    arrival_rate = float(df_test.loc[ind, 'arrival_rate'])
     configtype = df_test.loc[ind, 'config']
-    A1 = float(df_test.loc[ind, 'A1'])
-    A2 = float(df_test.loc[ind, 'A2'])
-    A3 = float(df_test.loc[ind, 'A3'])
-    A4 = float(df_test.loc[ind, 'A4'])
-    A5 = float(df_test.loc[ind, 'A5'])
-    A6 = float(df_test.loc[ind, 'A6'])
-    A7 = float(df_test.loc[ind, 'A7'])
+    A1 = df_test.loc[ind, 'A1']
+    A2 = df_test.loc[ind, 'A2']
+    A3 = df_test.loc[ind, 'A3']
+    A4 = df_test.loc[ind, 'A4']
+    A5 = df_test.loc[ind, 'A5']
+    A6 = df_test.loc[ind, 'A6']
+    A7 = df_test.loc[ind, 'A7']
 
 except:
     print('cant find file ')
