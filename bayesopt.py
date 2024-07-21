@@ -79,6 +79,15 @@ choose_dict = np.random.choice(np.arange(len(list(dict_left.keys()))))
 
 arrival_rate, configtype = dict_left[choose_dict]
 
+if configtype == 'low':
+    configtype = 'low_utilization'
+elif configtype == 'high':
+    configtype = 'high_utilization'
+elif configtype == 'down':
+    configtype = 'down_stream'
+elif configtype == 'slow':
+    configtype = 'slow_server'
+
 
 # listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
 # listis = ['complete_parallel', 'complete_reversed', 'complete']
@@ -164,14 +173,7 @@ def main():
     arrival_rate, configtype = dict_left[choose_dict]
     print(arrival_rate)
 
-    if configtype == 'low':
-        configtype = 'low_utilization'
-    elif configtype == 'high_utilization':
-        configtype = 'high'
-    elif configtype == 'down':
-        configtype = 'down_stream'
-    elif configtype == 'slow':
-        configtype = 'slow_server'
+
 
 
     if configtype == 'low_utilization':
