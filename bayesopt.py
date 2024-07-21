@@ -166,10 +166,10 @@ def main():
 
     if configtype == 'low':
         configtype = 'low_utilization'
-    elif configtype == 'high':
-        configtype = 'high_utilization'
-    elif configtype == 'down_stream':
-        configtype = 'down'
+    elif configtype == 'high_utilization':
+        configtype = 'high'
+    elif configtype == 'down':
+        configtype = 'down_stream'
     elif configtype == 'slow':
         configtype = 'slow_server'
 
