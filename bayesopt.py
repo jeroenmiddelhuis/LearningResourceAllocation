@@ -160,7 +160,18 @@ def main():
     seed = cur_time + np.random.randint(1, 1000)  # + len(os.listdir(data_path)) +
     np.random.seed(seed + 2)
 
+
+    arrival_rate, configtype = dict_left[choose_dict]
     print(arrival_rate)
+
+    if configtype == 'low':
+        configtype = 'low_utilization'
+    elif configtype == 'high':
+        configtype = 'high_utilization'
+    elif configtype == 'down_stream':
+        configtype = 'down'
+    elif configtype == 'slow':
+        configtype = 'slow_server'
 
 
     if configtype == 'low_utilization':
@@ -187,7 +198,7 @@ def main():
                 4.495932910616953, 59.9031432379812]
 
     elif configtype == 'complete_parallel':
-        A_vals= [16.25241923304227, 12.250521336587763, 14.43510634863599, 5.837521363412663, 18.35548245025887,
+        A_vals = [16.25241923304227, 12.250521336587763, 14.43510634863599, 5.837521363412663, 18.35548245025887,
                          14.291515667953812, 377.12721840056307]
 
 
