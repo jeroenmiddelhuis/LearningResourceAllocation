@@ -12,7 +12,7 @@ try:
     df_test = pkl.load(open('/home/eliransc/notebooks/bpo/final_training_results.pkl', 'rb'))
     df_test = df_test.reset_index()
     ind = np.random.choice(np.arange(df_test.shape[0]))
-    arrival_rate = float(df_test.loc[ind, 'arrival_rate'])
+    arrival_rate = arrival_rate = 'pattern'#float(df_test.loc[ind, 'arrival_rate'])
     configtype = df_test.loc[ind, 'config']
     A1 = df_test.loc[ind, 'A1']
     A2 = df_test.loc[ind, 'A2']
