@@ -123,7 +123,7 @@ def main():
     np.random.seed(seed + 2)
 
 
-    arrival_rate, configtype = dict_left[choose_dict]
+    arrival_rate , configtype = dict_left[ind_rand]
     print(arrival_rate)
 
 
