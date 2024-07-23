@@ -86,7 +86,7 @@ def simulate_competition(A):
 
 
     pkl.dump((nr_uncompleted_cases, total_reward, CT_mean, CT_std, utilisation),
-             open(str(model_num) + '_finalQ' + configtype + '_arrival_rate_Q' + str(arrival_rate) + '.pkl', 'wb'))
+             open('simple'+ str(model_num) + '_finalQ' + configtype + '_arrival_rate_Q' + str(arrival_rate) + '.pkl', 'wb'))
     return CT_mean
 
 
