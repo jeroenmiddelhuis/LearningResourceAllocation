@@ -103,7 +103,7 @@ def aggregate_sims1(A):
     model_num = np.random.randint(0, 1000)
     tot_res = []
     print(A)
-    for ind in range(20):
+    for ind in range(10):
         res = simulate_competition1(A)
         print(res)
         # print(res)
