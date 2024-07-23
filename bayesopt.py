@@ -39,7 +39,7 @@ import pandas as pd
 
 
 dict_left = pkl.load( open('/home/eliransc/projects/def-dkrass/eliransc/LearningResourceAllocation/eliran_results/dict_left.pkl', 'rb'))
-ind_rand = np.random.choice(np.arange(9))
+ind_rand = np.random.choice(len(dict_left))
 arrival_rate , configtype = dict_left[ind_rand]
 
 # listis = [ 'parallel', 'n_system', 'down_stream', 'slow_server', 'high_utilization', 'low_utilization']
