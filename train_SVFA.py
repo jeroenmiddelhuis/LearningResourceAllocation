@@ -22,7 +22,7 @@ try:
     # A6 = df_test.loc[ind, 'A6']
     # A7 = df_test.loc[ind, 'A7']
 
-    res_df_path = '/home/eliransc/projects/def-dkrass/eliransc/LearningResourceAllocation/res_from_cedar/res_df.pkl'
+    res_df_path = '/home/eliransc/projects/def-dkrass/eliransc/LearningResourceAllocation/res_from_cedar/res_df_finish.pkl'
 
     df_test = pkl.load(open(res_df_path, 'rb'))
     df_test = df_test.reset_index()
