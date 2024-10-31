@@ -72,13 +72,16 @@ class ShortestProcessingTime(Planner):
                 processing_time = self.resource_pools[assignment[1]][assignment[0]][0]
                 if processing_time < spt:
                     spt = processing_time
-                    best_assignment = assignment
-
+                    best_assignment = [assignment]
+                elif processing_time == spt:
+                    best_assignment.append(assignment)
+            best_assignment = random.choice(best_assignment) #multiple resources with the same processing time
             assignment = (best_assignment[0], (next((x for x in available_tasks if x.task_type == best_assignment[1]), None)))
             available_tasks.remove(assignment[1])
             available_resources.remove(assignment[0])
             assignments.append(assignment)
             possible_assignments = self.get_possible_assignments(available_tasks, available_resources, resource_pools)
+            best_assignment = []
         return assignments 
 
 

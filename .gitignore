@@ -1,6 +1,7 @@
 __pycache__/
 env/
 test/
-tmp/
-tmp_DDQN/
+tmp*/
+results*/
 hyperparameter_tuning/
+figures/

@@ -45,15 +45,16 @@ if __name__ == '__main__':
     running_time = 5000
     num_cpu = 1
     load_model = False
-    config_type= 'slow_server' # Config types as given in config.txt
+    config_type= 'complete_reversed'# sys.argv[1]#'slow_server' # Config types as given in config.txt
     print(config_type)
     reward_function = 'cycle_time'
-    arrival_rate = 'pattern'
+    arrival_rate = 'pattern'#float(sys.argv[2]) if sys.argv[2] != 'pattern' else sys.argv[2]
     postpone_penalty = 0
-    time_steps = 2e7 # Total timesteps for training
+    time_steps = 5e7 # Total timesteps for training
+    t_in_state = True
     #n_steps = 25600 # Number of steps for each network update
     # Create log dir
-    log_dir = f"./tmp/{config_type}_{int(time_steps)}_{n_steps}/" # Logging training results
+    log_dir = f"./tmp_t_in_state/{config_type}_{arrival_rate}/" # Logging training results
 
     os.makedirs(log_dir, exist_ok=True)
 
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     # Reward functions: 'AUC', 'case_task'
     env = BPOEnv(running_time=running_time, config_type=config_type, 
                 reward_function=reward_function, postpone_penalty=postpone_penalty,
-                write_to=log_dir, arrival_rate=arrival_rate)  # Initialize env
+                write_to=log_dir, arrival_rate=arrival_rate, t_in_state=t_in_state)  # Initialize env
     env = Monitor(env, log_dir)
 
     resource_str = ''
@@ -81,19 +82,18 @@ if __name__ == '__main__':
     # then, in a browser page, access localhost:6006 to see the board
     model.set_logger(configure(log_dir, ["stdout", "csv", "tensorboard"]))
 
-    # 40
     # Train the agent
     eval_env = BPOEnv(running_time=running_time, config_type=config_type, 
                 reward_function=reward_function, postpone_penalty=postpone_penalty,
-                write_to=log_dir)  # Initialize env
+                write_to=None, arrival_rate=arrival_rate, t_in_state=t_in_state)  # Initialize env
     eval_env = Monitor(eval_env, log_dir)
-    eval_callback = EvalPolicyCallback(check_freq=int(n_steps), nr_evaluations=10, log_dir=log_dir, eval_env=eval_env)
+    eval_callback = EvalPolicyCallback(check_freq=3*int(n_steps), nr_evaluations=10, log_dir=log_dir, eval_env=eval_env)
     best_reward_callback = SaveOnBestTrainingRewardCallback(check_freq=int(n_steps), log_dir=log_dir)
 
 
-    model.learn(total_timesteps=int(time_steps))#), callback=eval_callback)#
+    model.learn(total_timesteps=int(time_steps))#, callback=eval_callback)#
 
-    # For episode rewards, use env.get_episode_rewards()
+    # For episode rewards, use env.get_episode_rewards()®
     # env.get_episode_times() returns the wall clock time in seconds of each episode (since start)
     # env.rewards returns a list of ALL rewards. Of current episode?
     # env.episode_lengths returns the number of timesteps per episode

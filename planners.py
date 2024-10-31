@@ -200,7 +200,7 @@ class PPOPlanner(Planner):
     """A :class:`.Planner` that assigns tasks to resources following policy dictated by (pretrained) DRL algorithm."""
 
     def __str__(self) -> str:
-        return 'PPOPlanner'
+        return 'PPO'
 
     def __init__(self, model_name) -> None:
         self.model = MaskablePPO.load(f'{model_name}')

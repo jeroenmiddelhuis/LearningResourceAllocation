@@ -7,7 +7,7 @@ from typing import List
 from simulator import Simulator
 
 class BPOEnv(Env):
-    def __init__(self, running_time, config_type, reward_function=None, postpone_penalty=0, write_to=None, arrival_rate=0.5) -> None:
+    def __init__(self, running_time, config_type, reward_function=None, postpone_penalty=0, write_to=None, arrival_rate=0.5, t_in_state=False) -> None:
         self.num_envs = 1
         self.running_time = running_time
         self.counter = 0
@@ -18,6 +18,7 @@ class BPOEnv(Env):
         self.postpone_penalty = postpone_penalty
         self.write_to = write_to
         self.arrival_rate = arrival_rate
+        self.t_in_state = t_in_state
         self.action_number = [0, 0, 0]
         self.action_time = [0, 0, 0]
         self.step_print = False
@@ -25,7 +26,7 @@ class BPOEnv(Env):
         self.additional_rewards = 0
         self.previous_reward_time = 0
 
-        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to, arrival_rate=self.arrival_rate)
+        self.simulator = Simulator(running_time=self.running_time, planner=None, config_type=self.config_type, reward_function=self.reward_function, write_to=self.write_to, arrival_rate=self.arrival_rate, t_in_state=self.t_in_state)
         #print(self.simulator.input)
         #print(self.simulator.output)
         #define lows and highs for different sections of the input
@@ -33,7 +34,7 @@ class BPOEnv(Env):
         highs = np.array([1 for x in range(len(self.simulator.resources))] +\
                          [float(len(self.simulator.task_types)) for x in range(len(self.simulator.resources))] +\
                          [1 for x in range(len(self.simulator.task_types) - 1)]) #+\
-        
+        if self.t_in_state: highs = np.append(highs, [1]) # Add time in state to the observation space
         self.observation_space = spaces.Box(low=lows,
                                             high=highs,
                                             shape=(len(self.simulator.input),), dtype=np.float64) #observation space is the cartesian product of resources and tasks
@@ -107,7 +108,7 @@ class BPOEnv(Env):
 
         print("-------Resetting environment-------")
         self.__init__(self.running_time, self.config_type, reward_function=self.reward_function, 
-                      postpone_penalty=self.postpone_penalty, write_to=self.write_to, arrival_rate=self.arrival_rate)
+                      postpone_penalty=self.postpone_penalty, write_to=self.write_to, arrival_rate=self.arrival_rate, t_in_state=self.t_in_state)
         
         while (sum(self.simulator.define_action_masks()) <= 1):
             self.simulator.run() # Run the simulator to get to the first decision epoch

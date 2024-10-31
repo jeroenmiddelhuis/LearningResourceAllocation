@@ -66,7 +66,7 @@ class Task:
 
 
 class Simulator:    
-    def __init__(self, running_time, planner, config_type, reward_function='cycle_time', write_to=None, arrival_rate=0.5):
+    def __init__(self, running_time, planner, config_type, reward_function='cycle_time', write_to=None, arrival_rate=0.5, t_in_state=False):
         self.config_type = config_type
         with open(os.path.join(sys.path[0], "config.txt"), "r") as f:
             data = f.read()
@@ -125,12 +125,14 @@ class Simulator:
         self.resource_last_start = {resource:0 for resource in self.resources}
 
         # Reinforcement learning parameters
+        self.t_in_state = t_in_state
         self.input = [resource + '_availability' for resource in self.resources] + \
                      [resource + '_to_task' for resource in self.resources] + \
-                     [task_type for task_type in self.task_types if task_type != 'Start'] 
+                     [task_type for task_type in self.task_types if task_type != 'Start']
+        if self.t_in_state: self.input = self.input + ['t']
         self.output = [(resource, task) for task in self.task_types[1:] for resource in self.resources if resource in self.resource_pools[task]] + ['Postpone']
         #print(len(self.input), len(self.output))
-        self.reward_function = reward_function
+        self.reward_function = reward_function        
         self.write_to = write_to
         self.current_reward = 0
         self.total_reward = 0
@@ -284,7 +286,10 @@ class Simulator:
         else:
             task_types_num = [0.0 for el in self.task_types if el != 'Start']
 
-        return np.array(resources_available + resources_assigned + task_types_num)
+        if self.t_in_state:
+            return np.array(resources_available + resources_assigned + task_types_num + [(self.now%250/250)])
+        else:
+            return np.array(resources_available + resources_assigned + task_types_num)
 
     def define_action_masks(self):
         action_masks = [True if resource in self.available_resources and task in [_task.task_type for _task in self.available_tasks] else False 
@@ -440,9 +445,11 @@ class Simulator:
                 for i in range(len(self.resources)):
                     resource_str += f'{utilisation[i]},'
                 if self.planner != None:
-                    with open(self.write_to + f'\\{self.planner}_{self.config_type}.txt', "a") as file:
+                    with open(self.write_to + f'{self.planner}_{self.config_type}_{self.arrival_rate}.txt', "a") as file:
                         file.write(f"{len(self.uncompleted_cases)},{resource_str}{self.total_reward},{self.sumx/self.sumw},{np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}\n")
-
+                else:
+                    with open(self.write_to + f'/results_{self.config_type}.txt', "a") as file:
+                        file.write(f"{len(self.uncompleted_cases)},{resource_str}{self.total_reward},{self.sumx/self.sumw},{np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)}\n")
             return len(self.uncompleted_cases),self.total_reward,self.sumx/self.sumw,np.sqrt(self.sumxx / self.sumw - self.sumx / self.sumw * self.sumx / self.sumw)
         
 
